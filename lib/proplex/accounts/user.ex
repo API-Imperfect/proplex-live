@@ -4,12 +4,57 @@ defmodule Proplex.Accounts.User do
 
   schema "users" do
     field :email, :string
+    field :username, :string
     field :password, :string, virtual: true, redact: true
     field :hashed_password, :string, redact: true
     field :confirmed_at, :utc_datetime
     field :authenticated_at, :utc_datetime, virtual: true
 
     timestamps(type: :utc_datetime)
+  end
+
+  def registration_changeset(user, attrs, opts \\ []) do
+    user
+    |> cast(attrs, [:email, :username, :password])
+    |> validate_email(opts)
+    |> validate_username(opts)
+    |> validate_confirmation(:password, message: "does not match password")
+    |> validate_password(opts)
+  end
+
+  defp validate_username(changeset, opts) do
+    changeset
+    |> validate_required([:username])
+    |> validate_format(:username, ~r/^[A-Za-z0-9-]+$/,
+      message: "can only contain letters, numbers and dashes"
+    )
+    |> validate_length(:username, max: 20)
+    |> maybe_validate_unique_username(opts)
+  end
+
+  defp maybe_validate_unique_username(changeset, opts) do
+    if Keyword.get(opts, :validate_unique_username, true) do
+      changeset
+      |> unsafe_validate_unique(:username, Proplex.Repo)
+      |> unique_constraint(:username)
+    else
+      changeset
+    end
+  end
+
+  def username_changeset(user, attrs, opts \\ []) do
+    user
+    |> cast(attrs, [:username])
+    |> validate_username(opts)
+    |> validate_username_changed()
+  end
+
+  defp validate_username_changed(changeset) do
+    if get_field(changeset, :username) && get_change(changeset, :username) == nil do
+      add_error(changeset, :username, "did not change")
+    else
+      changeset
+    end
   end
 
   @doc """
