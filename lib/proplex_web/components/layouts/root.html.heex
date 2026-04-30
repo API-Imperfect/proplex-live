@@ -1,56 +1,73 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="csrf-token" content={get_csrf_token()} />
-    <.live_title default="Proplex" suffix=" · Phoenix Framework">
-      {assigns[:page_title]}
-    </.live_title>
-    <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
-    <script defer phx-track-static type="text/javascript" src={~p"/assets/js/app.js"}>
-    </script>
-    <script>
-      (() => {
-        const setTheme = (theme) => {
-          if (theme === "system") {
-            localStorage.removeItem("phx:theme");
-            document.documentElement.removeAttribute("data-theme");
-          } else {
-            localStorage.setItem("phx:theme", theme);
-            document.documentElement.setAttribute("data-theme", theme);
-          }
-        };
-        if (!document.documentElement.hasAttribute("data-theme")) {
-          setTheme(localStorage.getItem("phx:theme") || "system");
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="csrf-token" content={get_csrf_token()} />
+  <.live_title default="Proplex - Property Management" suffix=" · Proplex Framework">
+    {assigns[:page_title]}
+  </.live_title>
+  <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
+  <script defer phx-track-static type="text/javascript" src={~p"/assets/js/app.js"}>
+  </script>
+  <script>
+    (() => {
+      const setTheme = (theme) => {
+        if (theme === "system") {
+          localStorage.removeItem("phx:theme");
+          document.documentElement.removeAttribute("data-theme");
+        } else {
+          localStorage.setItem("phx:theme", theme);
+          document.documentElement.setAttribute("data-theme", theme);
         }
-        window.addEventListener("storage", (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"));
-        
-        window.addEventListener("phx:set-theme", (e) => setTheme(e.target.dataset.phxTheme));
-      })();
-    </script>
-  </head>
-  <body>
-    <ul class="menu menu-horizontal w-full relative z-10 flex items-center gap-4 px-4 sm:px-6 lg:px-8 justify-end">
-      <%= if @current_scope do %>
-        <li>
-          {@current_scope.user.email}
-        </li>
-        <li>
-          <.link href={~p"/users/settings"}>Settings</.link>
-        </li>
-        <li>
-          <.link href={~p"/users/log-out"} method="delete">Log out</.link>
-        </li>
-      <% else %>
-        <li>
-          <.link href={~p"/users/register"}>Register</.link>
-        </li>
-        <li>
-          <.link href={~p"/users/log-in"}>Log in</.link>
-        </li>
-      <% end %>
-    </ul>
-    {@inner_content}
-  </body>
+      };
+      if (!document.documentElement.hasAttribute("data-theme")) {
+        setTheme(localStorage.getItem("phx:theme") || "system");
+      }
+      window.addEventListener("storage", (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"));
+
+      window.addEventListener("phx:set-theme", (e) => setTheme(e.target.dataset.phxTheme));
+    })();
+  </script>
+</head>
+
+<body>
+  <header class="border-b border-base-300 bg-base-100">
+    <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+      <div class="flex h-16 items-center justify-between">
+        <.link navigate={~p"/"} class="flex items-center gap-2 hover:opacity-80">
+          <.icon name="hero-building-office-2" class="size-7 text-primary" />
+          <span class="text-lg font-semibold tracking-tight text-base-content">Proplex</span>
+        </.link>
+
+        <nav class="flex items-center gap-2">
+          <%= if @current_scope do %>
+            <span class="hidden text-sm text-base-content/70 sm:inline">
+              {@current_scope.user.email}
+            </span>
+            <.link navigate={~p"/users/settings"} class="btn btn-ghost btn-sm">
+              Settings
+            </.link>
+            <.link href={~p"/users/log-out"} method="delete" class="btn btn-ghost btn-sm">
+              Log out
+            </.link>
+            <% else %>
+              <.link navigate={~p"/users/log-in"} class="btn btn-ghost btn-sm">
+                Log in
+              </.link>
+              <.link navigate={~p"/users/register"} class="btn btn-primary btn-sm">
+                Register
+              </.link>
+              <% end %>
+                <.theme_toggle />
+        </nav>
+      </div>
+
+    </div>
+
+  </header>
+  {@inner_content}
+</body>
+
 </html>
