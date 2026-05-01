@@ -305,6 +305,48 @@ defmodule ProplexWeb.CoreComponents do
     """
   end
 
+  attr :field, Phoenix.HTML.FormField, required: true
+
+  attr :label, :string, required: true
+
+  attr :class, :any, default: nil
+
+  attr :rest, :global,
+    include: ~w(autocomplete required phx-debounce phx-mounted phx-blur phx-focus)
+
+  def password_input(assigns) do
+    ~H"""
+    <div class="relative">
+      <.input
+        field={@field}
+        type="password"
+        label={@label}
+        class={["w-full input pr-11", @class]}
+        {@rest}
+      />
+
+      <button
+        type="button"
+        aria-label="Toggle password visibility"
+        class="absolute right-3 top-9 z-10 flex size-7 items-center justify-center rounded text-base-content/50 hover:text-base-content"
+        phx-click={
+          JS.toggle_attribute({"type", "text", "password"}, to: "##{@field.id}")
+          |> JS.toggle_class("hidden", to: "##{@field.id}-show-icon")
+          |> JS.toggle_class("hidden", to: "##{@field.id}-hide-icon")
+        }
+      >
+        <span id={"#{@field.id}-show-icon"}>
+          <.icon name="hero-eye" class="size-5" />
+        </span>
+
+        <span id={"#{@field.id}-hide-icon"} class="hidden">
+          <.icon name="hero-eye-slash" class="size-5" />
+        </span>
+      </button>
+    </div>
+    """
+  end
+
   @doc """
   Renders a header with title.
   """
