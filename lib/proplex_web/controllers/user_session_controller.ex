@@ -22,6 +22,11 @@ defmodule ProplexWeb.UserSessionController do
         |> put_flash(:info, info)
         |> UserAuth.log_in_user(user, user_params)
 
+      {:error, :password_user_confirmed} ->
+        conn
+        |> put_flash(:info, "User confirmed successfully. Please login with your password.")
+        |> redirect(to: ~p"/users/log-in")
+
       _ ->
         conn
         |> put_flash(:error, "The link is invalid or it has expired.")
