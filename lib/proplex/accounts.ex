@@ -240,43 +240,40 @@ defmodule Proplex.Accounts do
      `mix help phx.gen.auth`.
   """
   def login_user_by_magic_link(token) do
+    # Verify the token's signature and build a query to look it up.
     {:ok, query} = UserToken.verify_magic_link_token_query(token)
 
     case Repo.one(query) do
-
+      # Unconfirmed user with a password already set. Logging them in via the
+      # link would let anyone who registered with the victim's email hijack
+      # their session, so we just confirm the email and send them to log in.
       {%User{confirmed_at: nil, hashed_password: hash} = user, _token} when not is_nil(hash) ->
-
+        # Confirm the user and wipe all their tokens in one transaction.
         Repo.transact(fn ->
-
           with {:ok, user} <- Repo.update(User.confirm_changeset(user)),
-
                {_, _} <- Repo.delete_all(from(t in UserToken, where: t.user_id == ^user.id)) do
-
             {:ok, user}
           end
         end)
-
         |> case do
-
+          # Sentinel the controller turns into a redirect to the password page.
           {:ok, _user} -> {:error, :password_user_confirmed}
-
           other -> other
         end
 
-
+      # Unconfirmed user, no password — standard magic-link signup.
+      # Confirm them, log them in, expire all their tokens.
       {%User{confirmed_at: nil} = user, _token} ->
         user
-
         |> User.confirm_changeset()
-
         |> update_user_and_delete_all_tokens()
 
-
+      # Already confirmed — passwordless login. Burn the link, sign them in.
       {user, token} ->
         Repo.delete!(token)
-
         {:ok, {user, []}}
 
+      # Token didn't decode, was already used, or has expired.
       nil ->
         {:error, :not_found}
     end

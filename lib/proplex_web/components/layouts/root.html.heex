@@ -44,7 +44,7 @@
         <nav class="flex items-center gap-2">
           <%= if @current_scope do %>
             <span class="hidden text-sm text-base-content/70 sm:inline">
-              {@current_scope.user.email}
+              {@current_scope.user.username}
             </span>
             <.link navigate={~p"/users/settings"} class="btn btn-ghost btn-sm">
               Settings
