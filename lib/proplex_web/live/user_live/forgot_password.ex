@@ -1,4 +1,4 @@
-defmodule ProplexWeb.UserLive.Login do
+defmodule ProplexWeb.UserLive.ForgotPassword do
   use ProplexWeb, :live_view
 
   alias Proplex.Accounts

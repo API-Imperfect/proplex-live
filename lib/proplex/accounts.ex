@@ -319,9 +319,9 @@ defmodule Proplex.Accounts do
     with {:ok, query} <- UserToken.verify_reset_password_token_query(token),
          %User{} = user <- Repo.one(query) do
       user
+    else
+      _ -> nil
     end
-  else
-    _ -> nil
   end
 
   def reset_user_password(user, attrs) do

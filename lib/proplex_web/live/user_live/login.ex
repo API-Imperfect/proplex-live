@@ -1,8 +1,6 @@
 defmodule ProplexWeb.UserLive.Login do
   use ProplexWeb, :live_view
 
-  alias Proplex.Accounts
-
   @impl true
   def render(assigns) do
     ~H"""
@@ -63,7 +61,10 @@ defmodule ProplexWeb.UserLive.Login do
             />
 
             <div class="mt-1 mb-3 flex justify-end">
-              <.link navigate={~p"/users/log-in"} class="text-sm text-primary hover:underline">
+              <.link
+                navigate={~p"/users/forgot-password"}
+                class="text-sm text-primary hover:underline"
+              >
                 Forgot password?
               </.link>
             </div>
