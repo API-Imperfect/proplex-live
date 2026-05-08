@@ -86,9 +86,19 @@ defmodule Proplex.Accounts do
 
   """
   def register_user(attrs) do
-    %User{}
-    |> User.registration_changeset(attrs)
-    |> Repo.insert()
+    result =
+      %User{}
+      |> User.registration_changeset(attrs)
+      |> Repo.insert()
+
+    case result do
+      {:ok, user} ->
+        _result = Proplex.Authorization.assign_role(user, "tenant")
+        {:ok, user}
+
+      error ->
+        error
+    end
   end
 
   ## Settings

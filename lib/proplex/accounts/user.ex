@@ -10,6 +10,10 @@ defmodule Proplex.Accounts.User do
     field :confirmed_at, :utc_datetime
     field :authenticated_at, :utc_datetime, virtual: true
 
+    has_many :user_roles, Proplex.Authorization.UserRole
+
+    has_many :roles, through: [:user_roles, :role]
+
     timestamps(type: :utc_datetime)
   end
 
