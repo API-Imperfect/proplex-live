@@ -14,6 +14,8 @@ defmodule Proplex.Accounts.User do
 
     has_many :roles, through: [:user_roles, :role]
 
+    has_one :profile, Proplex.Accounts.Profile
+
     timestamps(type: :utc_datetime)
   end
 
