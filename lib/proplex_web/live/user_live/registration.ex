@@ -107,6 +107,11 @@ defmodule ProplexWeb.UserLive.Registration do
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign_form(socket, changeset)}
+
+      {:error, :registration_failed} ->
+        {:noreply,
+         socket
+         |> put_flash(:error, "Something went wrong creating your account. Please try again.")}
     end
   end
 

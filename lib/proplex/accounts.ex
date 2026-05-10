@@ -86,18 +86,29 @@ defmodule Proplex.Accounts do
 
   """
   def register_user(attrs) do
-    result =
-      %User{}
-      |> User.registration_changeset(attrs)
-      |> Repo.insert()
+    changeset = User.registration_changeset(%User{}, attrs)
 
-    case result do
-      {:ok, user} ->
-        _result = Proplex.Authorization.assign_role(user, "tenant")
+    multi =
+      Ecto.Multi.new()
+      |> Ecto.Multi.insert(:user, changeset)
+      |> Ecto.Multi.run(:profile, fn _repo, %{user: user} ->
+        %{user_id: user.id}
+        |> Profile.create_changeset()
+        |> Repo.insert()
+      end)
+      |> Ecto.Multi.run(:role, fn _repo, %{user: user} ->
+        Proplex.Authorization.assign_role(user, "tenant")
+      end)
+
+    case Repo.transact(multi) do
+      {:ok, %{user: user}} ->
         {:ok, user}
 
-      error ->
-        error
+      {:error, :user, changeset, _changes} ->
+        {:error, changeset}
+
+      {:error, _failed_step, _failed_value, _changes} ->
+        {:error, :registration_failed}
     end
   end
 
