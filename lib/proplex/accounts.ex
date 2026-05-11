@@ -6,7 +6,7 @@ defmodule Proplex.Accounts do
   import Ecto.Query, warn: false
   alias Proplex.Repo
 
-  alias Proplex.Accounts.{User, UserToken, UserNotifier}
+  alias Proplex.Accounts.{Profile, User, UserToken, UserNotifier}
 
   ## Database getters
 
@@ -28,6 +28,27 @@ defmodule Proplex.Accounts do
 
   def get_user_by_username(username) when is_binary(username) do
     Repo.get_by(User, username: username)
+  end
+
+  def get_user_with_profile_by_username(username) when is_binary(username) do
+    case get_user_by_username(username) do
+      nil ->
+        nil
+
+      %User{} = user ->
+        user = Repo.preload(user, :profile)
+
+        if user.profile do
+          user
+        else
+          {:ok, profile} =
+            %{user_id: user.id}
+            |> Profile.create_changeset()
+            |> Repo.insert()
+
+          %{user | profile: profile}
+        end
+    end
   end
 
   @doc """

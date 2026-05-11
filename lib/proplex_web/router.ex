@@ -56,6 +56,14 @@ defmodule ProplexWeb.Router do
       live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
     end
 
+    live_session :require_profiles_view,
+      on_mount: [
+        {ProplexWeb.UserAuth, :require_authenticated},
+        {ProplexWeb.UserAuthorization, {:require_permission, :profiles, :view}}
+      ] do
+      live "/users/:username/profile", UserLive.ProfileShow, :show
+    end
+
     post "/users/update-password", UserSessionController, :update_password
   end
 
