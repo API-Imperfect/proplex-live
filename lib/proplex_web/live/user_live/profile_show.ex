@@ -50,6 +50,14 @@ defmodule ProplexWeb.UserLive.ProfileShow do
 
           <dl class="mt-6 space-y-3 text-sm">
             <div
+              :if={@user.profile.gender}
+              class="flex justify-between"
+            >
+              <dt class="text-base-content/60">Gender</dt>
+              <dd class="font-medium">{format_gender(@user.profile.gender)}</dd>
+            </div>
+
+            <div
               :if={@user.profile.occupation && @user.profile.occupation != :none}
               class="flex justify-between"
             >
@@ -78,11 +86,19 @@ defmodule ProplexWeb.UserLive.ProfileShow do
               <dd class="font-medium">{Calendar.strftime(@user.inserted_at, "%B %Y")}</dd>
             </div>
           </dl>
+          <div :if={own_profile?(@current_scope, @user)} class="mt-6">
+            <.link navigate={~p"/users/settings/profile"} class="btn btn-primary w-full">
+              <.icon name="hero-pencil-square" class="size-4" /> Edit Profile
+            </.link>
+          </div>
         </div>
       </div>
     </Layouts.app>
     """
   end
+
+  defp own_profile?(%{user: %{id: id}}, %{id: id}), do: true
+  defp own_profile?(_scope, _user), do: false
 
   @impl true
   def mount(%{"username" => username}, _session, socket) do
@@ -123,4 +139,8 @@ defmodule ProplexWeb.UserLive.ProfileShow do
     do: :erlang.float_to_binary(rating, decimals: 1)
 
   defp format_rating(rating), do: to_string(rating)
+
+  defp format_gender(:male), do: "Male"
+  defp format_gender(:female), do: "Female"
+  defp format_gender(:prefer_not_to_say), do: "Prefer not to say"
 end

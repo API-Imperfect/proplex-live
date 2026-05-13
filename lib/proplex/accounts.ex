@@ -51,6 +51,16 @@ defmodule Proplex.Accounts do
     end
   end
 
+  def change_user_profile(%Profile{} = profile, attrs \\ %{}) do
+    Profile.changeset(profile, attrs)
+  end
+
+  def update_user_profile(%Profile{} = profile, attrs) do
+    profile
+    |> Profile.changeset(attrs)
+    |> Repo.update()
+  end
+
   @doc """
   Gets a user by email and password.
 
