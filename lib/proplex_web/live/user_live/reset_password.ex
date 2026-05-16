@@ -72,7 +72,7 @@ defmodule ProplexWeb.UserLive.ResetPassword do
       {:ok,
        socket
        |> put_flash(:error, "Reset password link is invalid or it has expired")
-       |> redirect(to: ~p"/users/log-in")}
+       |> push_navigate(to: ~p"/users/log-in")}
     end
   end
 
@@ -92,7 +92,7 @@ defmodule ProplexWeb.UserLive.ResetPassword do
         {:noreply,
          socket
          |> put_flash(:info, "Password reset successfully. Please log in.")
-         |> redirect(to: ~p"/users/log-in")}
+         |> push_navigate(to: ~p"/users/log-in")}
 
       {:error, changeset} ->
         {:noreply, assign_form(socket, changeset)}

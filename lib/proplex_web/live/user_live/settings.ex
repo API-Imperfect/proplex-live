@@ -16,7 +16,13 @@ defmodule ProplexWeb.UserLive.Settings do
         </.header>
       </div>
 
-      <.form for={@email_form} id="email_form" phx-submit="update_email" phx-change="validate_email">
+      <.form
+        for={@email_form}
+        id="email_form"
+        phx-submit="update_email"
+        phx-change="validate_email"
+        phx-debounce="400"
+      >
         <.input
           field={@email_form[:email]}
           type="email"
@@ -38,6 +44,7 @@ defmodule ProplexWeb.UserLive.Settings do
         phx-change="validate_password"
         phx-submit="update_password"
         phx-trigger-action={@trigger_submit}
+        phx-debounce="400"
       >
         <input
           name={@password_form[:email].name}

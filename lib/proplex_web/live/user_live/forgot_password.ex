@@ -72,6 +72,6 @@ defmodule ProplexWeb.UserLive.ForgotPassword do
     {:noreply,
      socket
      |> put_flash(:info, info)
-     |> redirect(to: ~p"/users/log-in")}
+     |> push_navigate(to: ~p"/users/log-in")}
   end
 end
