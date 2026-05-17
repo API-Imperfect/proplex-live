@@ -66,7 +66,8 @@ defmodule Proplex.MixProject do
       {:gettext, "~> 1.0"},
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
-      {:bandit, "~> 1.5"}
+      {:bandit, "~> 1.5"},
+      {:image, "~> 0.54"}
     ]
   end
 

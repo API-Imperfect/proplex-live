@@ -15,6 +15,11 @@ defmodule ProplexWeb.Endpoint do
     websocket: [connect_info: [session: @session_options]],
     longpoll: [connect_info: [session: @session_options]]
 
+  plug Plug.Static,
+    at: "/uploads",
+    from: {:proplex, "priv/static/uploads"},
+    headers: %{"cache-control" => "public, max-age=31536000, immutable"}
+
   # Serve at "/" the static files from "priv/static" directory.
   #
   # When code reloading is disabled (e.g., in production),
