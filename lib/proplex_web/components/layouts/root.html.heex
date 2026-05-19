@@ -44,8 +44,14 @@
         <nav class="flex items-center gap-2">
           <%= if @current_scope do %>
             <.link navigate={~p"/users/#{@current_scope.user.username}/profile"}
-              class="hidden text-sm text-base-content/70 hover:text-base-content hover:underline sm:inline">
-              {@current_scope.user.username}
+              class="hidden items-center gap-2 text-sm text-base-content/70 hover:text-base-content sm:flex">
+              <%= if @current_scope.user.profile && @current_scope.user.profile.avatar_url do %>
+                <img src={@current_scope.user.profile.avatar_url} alt="Your avatar"
+                  class="size-8 rounded-full object-cover ring-1 ring-base-300" />
+                <% else %>
+                  <.icon name="hero-user-circle" class="size-8 text-base-content/40" />
+                  <% end %>
+                    <span class="hover:userline">{@current_scope.user.username}</span>
             </.link>
             <.link navigate={~p"/users/settings"} class="btn btn-ghost btn-sm">
               Settings

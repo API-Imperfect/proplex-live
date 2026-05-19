@@ -258,7 +258,11 @@ defmodule Proplex.Accounts do
   """
   def get_user_by_session_token(token) do
     {:ok, query} = UserToken.verify_session_token_query(token)
-    Repo.one(query)
+
+    case Repo.one(query) do
+      {user, inserted_at} -> {Repo.preload(user, :profile), inserted_at}
+      nil -> nil
+    end
   end
 
   @doc """

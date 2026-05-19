@@ -155,19 +155,19 @@ defmodule ProplexWeb.UserLive.ProfileEdit do
               />
             </div>
 
-            <.button phx-disable-with="Saving..." class="btn btn-primary mt-4 w-full">
-              Save changes
-            </.button>
-          </.form>
+            <div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <.link
+                navigate={~p"/users/#{@current_scope.user.username}/profile"}
+                class="btn btn-outline w-full"
+              >
+                Cancel
+              </.link>
 
-          <p class="mt-6 text-center text-sm text-base-content/70">
-            <.link
-              navigate={~p"/users/#{@current_scope.user.username}/profile"}
-              class="font-semibold text-primary hover:underline"
-            >
-              Back to profile
-            </.link>
-          </p>
+              <.button phx-disable-with="Saving..." class="btn btn-primary w-full sm:col-span-2">
+                Save changes
+              </.button>
+            </div>
+          </.form>
         </div>
       </div>
     </Layouts.app>
@@ -207,17 +207,47 @@ defmodule ProplexWeb.UserLive.ProfileEdit do
   end
 
   def handle_event("save", %{"profile" => attrs}, socket) do
-    case consume_avatar_uploads(socket) do
-      [{:error, _reason}] ->
+    case avatar_upload_rate_check(socket) do
+      {:deny, retry_after_ms} ->
+        minutes = max(1, ceil(retry_after_ms / 60_000))
+
+        unit = if minutes == 1, do: "minute", else: "minutes"
+
         {:noreply,
          socket
          |> put_flash(
            :error,
-           "We couldn't process that image. Please try a different file (JPG, PNG or WEBP)."
+           "You've uploaded too many avatars recently. Please try again in #{minutes} #{unit}."
          )}
 
-      avatar_result ->
-        save_profile(socket, attrs, avatar_result)
+      :ok ->
+        case consume_avatar_uploads(socket) do
+          [{:error, _reason}] ->
+            {:noreply,
+             socket
+             |> put_flash(
+               :error,
+               "We couldn't process that image. Please try a different file (JPG, PNG or WEBP)."
+             )}
+
+          avatar_result ->
+            save_profile(socket, attrs, avatar_result)
+        end
+    end
+  end
+
+  defp avatar_upload_rate_check(socket) do
+    if socket.assigns.uploads.avatar.entries == [] do
+      :ok
+    else
+      user_id = socket.assigns.current_scope.user.id
+
+      key = "avatar_upload:user:#{user_id}"
+
+      case Proplex.RateLimit.hit(key, :timer.hours(1), _limit = 10) do
+        {:allow, _count} -> :ok
+        {:deny, _retry_after_ms} = deny -> deny
+      end
     end
   end
 
@@ -229,16 +259,17 @@ defmodule ProplexWeb.UserLive.ProfileEdit do
       end
 
     case Accounts.update_user_profile(socket.assigns.profile, attrs) do
-      {:ok, profile} ->
+      {:ok, _profile} ->
         if avatar_result != [] do
           delete_old_avatar_file(socket.assigns.profile.avatar_url)
         end
 
+        username = socket.assigns.current_scope.user.username
+
         {:noreply,
          socket
-         |> assign(:profile, profile)
-         |> assign_form(Accounts.change_user_profile(profile))
-         |> put_flash(:info, "Profile updated successfully.")}
+         |> put_flash(:info, "Profile updated successfully.")
+         |> push_navigate(to: ~p"/users/#{username}/profile")}
 
       {:error, changeset} ->
         {:noreply, assign_form(socket, changeset)}

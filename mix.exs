@@ -21,7 +21,7 @@ defmodule Proplex.MixProject do
   def application do
     [
       mod: {Proplex.Application, []},
-      extra_applications: [:logger, :runtime_tools]
+      extra_applications: [:logger, :runtime_tools, :image, :hammer]
     ]
   end
 
@@ -67,7 +67,8 @@ defmodule Proplex.MixProject do
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
-      {:image, "~> 0.54"}
+      {:image, "~> 0.54"},
+      {:hammer, "~> 7.0"}
     ]
   end
 
