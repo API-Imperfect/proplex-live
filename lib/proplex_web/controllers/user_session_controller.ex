@@ -1,6 +1,8 @@
 defmodule ProplexWeb.UserSessionController do
   use ProplexWeb, :controller
 
+  require Logger
+
   alias Proplex.Accounts
   alias ProplexWeb.UserAuth
 
@@ -39,10 +41,22 @@ defmodule ProplexWeb.UserSessionController do
     %{"email" => email, "password" => password} = user_params
 
     if user = Accounts.get_user_by_email_and_password(email, password) do
+      Logger.info("User login succeeded",
+        event: :login_success,
+        user_id: user.id,
+        ip: client_ip(conn)
+      )
+
       conn
       |> put_flash(:info, info)
       |> UserAuth.log_in_user(user, user_params)
     else
+      Logger.warning("User login failed",
+        event: :login_failure,
+        email: email,
+        ip: client_ip(conn)
+      )
+
       case Proplex.RateLimit.record_failed_login(email, client_ip(conn)) do
         :ok ->
           conn
@@ -76,6 +90,12 @@ defmodule ProplexWeb.UserSessionController do
     user = conn.assigns.current_scope.user
     true = Accounts.sudo_mode?(user)
     {:ok, {_user, expired_tokens}} = Accounts.update_user_password(user, user_params)
+
+    Logger.info("Password changed via settings",
+      event: :password_changed,
+      flow: :settings,
+      user_id: user.id
+    )
 
     # disconnect all existing LiveViews with old sessions
     UserAuth.disconnect_sessions(expired_tokens)

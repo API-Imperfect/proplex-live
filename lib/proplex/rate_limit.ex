@@ -1,5 +1,6 @@
 defmodule Proplex.RateLimit do
   use Hammer, backend: :ets
+  require Logger
 
   def record_failed_login(email, ip) when is_binary(email) and is_binary(ip) do
     window = :timer.minutes(15)
@@ -8,7 +9,16 @@ defmodule Proplex.RateLimit do
          {:allow, _} <- hit("login_fail:ip:#{ip}", window, 20) do
       :ok
     else
-      {:deny, _} = deny -> deny
+      {:deny, retry_after_ms} ->
+        Logger.warning("Failed-login rate limit exceeded",
+          event: :rate_limit_denied,
+          limiter: :failed_login,
+          email: email,
+          ip: ip,
+          retry_after_ms: retry_after_ms
+        )
+
+        {:deny, retry_after_ms}
     end
   end
 
@@ -19,7 +29,16 @@ defmodule Proplex.RateLimit do
          {:allow, _} <- hit("pw_reset:ip:#{ip}", window, 10) do
       :ok
     else
-      {:deny, _} = deny -> deny
+      {:deny, retry_after_ms} ->
+        Logger.warning("Password-reset rate limit exceeded",
+          event: :rate_limit_denied,
+          limiter: :password_reset,
+          email: email,
+          ip: ip,
+          retry_after_ms: retry_after_ms
+        )
+
+        {:deny, retry_after_ms}
     end
   end
 end

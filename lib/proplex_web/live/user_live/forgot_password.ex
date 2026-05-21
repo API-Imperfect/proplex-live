@@ -1,6 +1,7 @@
 defmodule ProplexWeb.UserLive.ForgotPassword do
   use ProplexWeb, :live_view
 
+  require Logger
   alias Proplex.Accounts
 
   @impl true
@@ -64,7 +65,16 @@ defmodule ProplexWeb.UserLive.ForgotPassword do
   def handle_event("send_email", %{"user" => %{"email" => email}}, socket) do
     case Proplex.RateLimit.record_reset_request(email, socket.assigns.client_ip) do
       :ok ->
-        if user = Accounts.get_user_by_email(email) do
+        user = Accounts.get_user_by_email(email)
+
+        Logger.info("Password reset requested",
+          event: :password_reset_requested,
+          email: email,
+          ip: socket.assigns.client_ip,
+          user_exists: !is_nil(user)
+        )
+
+        if user do
           Accounts.deliver_user_reset_password_instructions(
             user,
             &url(~p"/users/reset-password/#{&1}")

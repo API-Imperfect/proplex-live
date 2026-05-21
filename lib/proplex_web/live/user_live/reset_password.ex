@@ -1,6 +1,8 @@
 defmodule ProplexWeb.UserLive.ResetPassword do
   use ProplexWeb, :live_view
 
+  require Logger
+
   alias Proplex.Accounts
 
   @impl true
@@ -89,6 +91,12 @@ defmodule ProplexWeb.UserLive.ResetPassword do
   def handle_event("reset_password", %{"user" => user_params}, socket) do
     case Accounts.reset_user_password(socket.assigns.user, user_params) do
       {:ok, _} ->
+        Logger.info("Password changed via reset flow",
+          event: :password_changed,
+          flow: :reset,
+          user_id: socket.assigns.user.id
+        )
+
         {:noreply,
          socket
          |> put_flash(:info, "Password reset successfully. Please log in.")
