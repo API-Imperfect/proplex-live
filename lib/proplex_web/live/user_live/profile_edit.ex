@@ -33,7 +33,10 @@ defmodule ProplexWeb.UserLive.ProfileEdit do
             <div class="mb-6">
               <label class="mb-2 block text-sm font-medium">Avatar</label>
 
-              <div class="flex items-center gap-4">
+              <div
+                class="flex items-center gap-4 rounded-box border border-dashed border-base-content/30 p-3 transition-colors hover:border-base-content/60"
+                phx-drop-target={@uploads.avatar.ref}
+              >
                 <div class="size-20 shrink-0 overflow-hidden rounded-full bg-base-300 ring-1 ring-base-300">
                   <%= case avatar_preview_state(@uploads, @profile) do %>
                     <% :upload_preview -> %>

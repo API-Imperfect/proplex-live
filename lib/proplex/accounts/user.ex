@@ -16,6 +16,8 @@ defmodule Proplex.Accounts.User do
 
     has_one :profile, Proplex.Accounts.Profile
 
+    has_many :tenancies, Proplex.Apartments.Tenancy
+
     timestamps(type: :utc_datetime)
   end
 
