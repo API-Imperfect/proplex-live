@@ -13,6 +13,7 @@ defmodule Proplex.Apartments.Apartment do
     field :archived_at, :utc_datetime
 
     has_many :tenancies, Proplex.Apartments.Tenancy
+    has_many :issues, Proplex.Issues.Issue
 
     timestamps(type: :utc_datetime)
   end

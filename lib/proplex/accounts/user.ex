@@ -17,6 +17,8 @@ defmodule Proplex.Accounts.User do
     has_one :profile, Proplex.Accounts.Profile
 
     has_many :tenancies, Proplex.Apartments.Tenancy
+    has_many :reported_issues, Proplex.Issues.Issue, foreign_key: :reporter_id
+    has_many :assigned_issues, Proplex.Issues.Issue, foreign_key: :assigned_technician_id
 
     timestamps(type: :utc_datetime)
   end
