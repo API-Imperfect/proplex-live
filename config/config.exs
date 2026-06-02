@@ -87,6 +87,11 @@ config :logger, :default_formatter,
     :buiding_name,
     :unit_number,
     :floor,
+    :issue_id,
+    :reporter_id,
+    :assigned_technician_id,
+    :priority,
+    :resolved_on,
     :failed_step,
     :failed_value
   ]
