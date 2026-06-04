@@ -72,6 +72,14 @@ defmodule ProplexWeb.Router do
       live "/users/my-apartment", UserLive.MyApartment, :show
     end
 
+    live_session :require_issues_create,
+      on_mount: [
+        {ProplexWeb.UserAuth, :require_authenticated},
+        {ProplexWeb.UserAuthorization, {:require_permission, :issues, :create}}
+      ] do
+      live "/issues/new", IssueLive.New, :new
+    end
+
     live_session :require_profiles_view,
       on_mount: [
         {ProplexWeb.UserAuth, :require_authenticated},

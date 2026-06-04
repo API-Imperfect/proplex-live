@@ -47,6 +47,10 @@ defmodule ProplexWeb.UserLive.MyApartment do
                   </div>
                 </dl>
 
+                <.link navigate={~p"/issues/new"} class="btn btn-primary w-full">
+                  <.icon name="hero-wrench-screwdriver" class="size-4" /> Report an issue
+                </.link>
+
                 <p class="text-center text-xs text-base-content/60">
                   Need to report an issue or change your unit? Contact your landlord.
                 </p>
