@@ -139,6 +139,11 @@ defmodule ProplexWeb.IssueLive.New do
          |> put_flash(:info, "Issue reported. Your landlord will be notified.")
          |> push_navigate(to: ~p"/users/my-apartment")}
 
+        {:noreply,
+         socket
+         |> put_flash(:info, "Issue reported. Your landlord will be notified")
+         |> push_navigate(to: ~p"/issues")}
+
       {:error, :no_active_tenancy} ->
         {:noreply,
          socket

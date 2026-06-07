@@ -80,6 +80,15 @@ defmodule ProplexWeb.Router do
       live "/issues/new", IssueLive.New, :new
     end
 
+    live_session :require_issues_view_own,
+      on_mount: [
+        {ProplexWeb.UserAuth, :require_authenticated},
+        {ProplexWeb.UserAuthorization, {:require_permission, :issues, :view_own}}
+      ] do
+      live "/issues", IssueLive.Index, :index
+      live "/issues/:id", IssueLive.Show, :show
+    end
+
     live_session :require_profiles_view,
       on_mount: [
         {ProplexWeb.UserAuth, :require_authenticated},
