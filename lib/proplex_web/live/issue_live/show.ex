@@ -12,10 +12,10 @@ defmodule ProplexWeb.IssueLive.Show do
     <Layouts.app flash={@flash} current_scope={@current_scope}>
       <div class="mx-auto max-w-2xl">
         <.link
-          navigate={~p"/issues"}
+          navigate={@back_path}
           class="mb-4 inline-flex items-center gap-1 text-sm text-base-content/70 hover:text-base-content hover:underline"
         >
-          <.icon name="hero-arrow-left" class="size-4" /> Back to My Issues
+          <.icon name="hero-arrow-left" class="size-4" /> {@back_label}
         </.link>
         <div class="rounded-box border border-base-300 bg-base-200 px-6 pb-8 pt-6 sm:px-8">
           <%!-- Header: title + badges --%>
@@ -45,6 +45,13 @@ defmodule ProplexWeb.IssueLive.Show do
               </dd>
             </div>
             <div class="flex justify-between">
+              <dt class="text-base-content/60">Reported by</dt>
+              <dd class="font-medium">
+                @{@issue.reporter.username}
+              </dd>
+            </div>
+
+            <div class="flex justify-between">
               <dt class="text-base-content/60">Reported on</dt>
               <dd class="font-medium">
                 {Calendar.strftime(@issue.inserted_at, "%B %-d, %Y")}
@@ -67,6 +74,30 @@ defmodule ProplexWeb.IssueLive.Show do
             </div>
           </dl>
 
+          <div
+            :if={@can_update_status? and @issue.status in [:reported, :in_progress]}
+            class="mt-6 border-t border-base-300 pt-4"
+          >
+            <.button
+              :if={@issue.status == :reported}
+              phx-click="start_progress"
+              phx-disable-with="Starting..."
+              class="btn btn-primary btn-sm"
+            >
+              <.icon name="hero-play" class="size-4" /> Start work
+            </.button>
+
+            <.button
+              :if={@issue.status == :in_progress}
+              phx-click="resolve"
+              phx-disable-with="Resolving..."
+              data-confirm="Mark this issue as resolved?"
+              class="btn btn-success btn-sm"
+            >
+              <.icon name="hero-check-circle" class="size-4" /> Mark resolved
+            </.button>
+          </div>
+
           <div :if={@can_delete?} class="mt-6 border-t border-base-300 pt-4">
             <.button
               phx-click="delete"
@@ -88,7 +119,10 @@ defmodule ProplexWeb.IssueLive.Show do
 
     case Issues.get_issue(id) do
       nil ->
-        {:ok, socket |> put_flash(:error, "Issue not found.") |> push_navigate(to: ~p"/issues")}
+        {:ok,
+         socket
+         |> put_flash(:error, "Issue not found.")
+         |> push_navigate(to: ~p"/")}
 
       issue ->
         cond do
@@ -96,20 +130,87 @@ defmodule ProplexWeb.IssueLive.Show do
             {:ok,
              socket
              |> assign(:issue, issue)
-             |> assign(:can_delete?, true)}
+             |> assign(:can_delete?, true)
+             |> assign(:can_update_status?, false)
+             |> assign(:back_path, ~p"/issues")
+             |> assign(:back_label, "Back to My Issues")}
 
           Authorization.has_role?(user, "admin") ->
             {:ok,
              socket
              |> assign(:issue, issue)
-             |> assign(:can_delete?, false)}
+             |> assign(:can_delete?, false)
+             |> assign(:can_update_status?, true)
+             |> assign(:back_path, ~p"/")
+             |> assign(:back_label, "Back")}
+
+          issue.assigned_technician_id == user.id ->
+            {:ok,
+             socket
+             |> assign(:issue, issue)
+             |> assign(:can_delete?, false)
+             |> assign(:can_update_status?, true)
+             |> assign(:back_path, ~p"/issues/assigned")
+             |> assign(:back_label, "Back to My Assignments")}
 
           true ->
             {:ok,
              socket
              |> put_flash(:error, "Issue not found.")
-             |> push_navigate(to: ~p"/issues")}
+             |> push_navigate(to: ~p"/")}
         end
+    end
+  end
+
+  @impl true
+  def handle_event("start_progress", _params, socket) do
+    issue = socket.assigns.issue
+
+    with true <- socket.assigns.can_update_status?,
+         :reported <- issue.status,
+         {:ok, _updated} <- Issues.start_progress(issue) do
+      updated = Issues.get_issue(issue.id)
+
+      {:noreply,
+       socket
+       |> assign(:issue, updated)
+       |> put_flash(:info, "Work started on this issue.")}
+    else
+      false ->
+        {:noreply, put_flash(socket, :error, "You can't update this issue.")}
+
+      status when is_atom(status) ->
+        {:noreply,
+         put_flash(socket, :error, "This issue can't be started from its current state.")}
+
+      {:error, _changeset} ->
+        {:noreply, put_flash(socket, :error, "Couldn't update the issue. Please try again.")}
+    end
+  end
+
+  @impl true
+  def handle_event("resolve", _params, socket) do
+    issue = socket.assigns.issue
+
+    with true <- socket.assigns.can_update_status?,
+         :in_progress <- issue.status,
+         {:ok, _updated} <- Issues.resolve_issue(issue) do
+      updated = Issues.get_issue(issue.id)
+
+      {:noreply,
+       socket
+       |> assign(:issue, updated)
+       |> put_flash(:info, "Issue marked as resolved.")}
+    else
+      false ->
+        {:noreply, put_flash(socket, :error, "You can't update this issue.")}
+
+      status when is_atom(status) ->
+        {:noreply,
+         put_flash(socket, :error, "This issue can't be resolved from its current state.")}
+
+      {:error, _changeset} ->
+        {:noreply, put_flash(socket, :error, "Couldn't update the issue. Please try again.")}
     end
   end
 
@@ -126,7 +227,7 @@ defmodule ProplexWeb.IssueLive.Show do
       {:noreply,
        socket
        |> put_flash(:error, "You can only delete your own reports.")
-       |> push_navigate(to: ~p"/issues")}
+       |> push_navigate(to: ~p"/")}
     end
   end
 end
