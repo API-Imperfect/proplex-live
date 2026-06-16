@@ -36,9 +36,7 @@ defmodule ProplexWeb.Layouts do
   def app(assigns) do
     ~H"""
     <main class="px-4 py-20 sm:px-6 lg:px-8">
-      <div class="mx-auto max-w-2xl space-y-4">
-        {render_slot(@inner_block)}
-      </div>
+      {render_slot(@inner_block)}
     </main>
 
     <.flash_group flash={@flash} />

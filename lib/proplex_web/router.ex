@@ -103,6 +103,14 @@ defmodule ProplexWeb.Router do
       live "/issues/:id", IssueLive.Show, :show
     end
 
+    live_session :require_issues_view_all,
+      on_mount: [
+        {ProplexWeb.UserAuth, :require_authenticated},
+        {ProplexWeb.UserAuthorization, {:require_permission, :issues, :view_all}}
+      ] do
+      live "/admin/issues", IssueLive.AdminIndex, :index
+    end
+
     live_session :require_profiles_view,
       on_mount: [
         {ProplexWeb.UserAuth, :require_authenticated},
