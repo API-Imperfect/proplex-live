@@ -66,6 +66,11 @@
               My Assignments
             </.link>
 
+            <.link :if={Proplex.Authorization.can?(@current_scope.user, :view_all, :issues)}
+              navigate={~p"/admin/issues"} class="btn btn-ghost btn-sm">
+              All Issues
+            </.link>
+
             <.link navigate={~p"/users/settings"} class="btn btn-ghost btn-sm">
               Settings
             </.link>
