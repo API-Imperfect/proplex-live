@@ -113,6 +113,20 @@ defmodule Proplex.Authorization do
     |> Repo.exists?()
   end
 
+  def list_users_with_role(role_name) do
+    technician_ids =
+      from ur in UserRole,
+        join: r in assoc(ur, :role),
+        where: r.name == ^to_string(role_name),
+        select: ur.user_id
+
+    from(u in Proplex.Accounts.User,
+      where: u.id in subquery(technician_ids),
+      order_by: u.username
+    )
+    |> Repo.all()
+  end
+
   def get_role_by_name(name) do
     Repo.get_by(Role, name: to_string(name))
   end
