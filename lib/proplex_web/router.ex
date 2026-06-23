@@ -1,4 +1,5 @@
 defmodule ProplexWeb.Router do
+  alias Proplex.Apartments.Apartment
   use ProplexWeb, :router
 
   import ProplexWeb.UserAuth
@@ -109,6 +110,14 @@ defmodule ProplexWeb.Router do
         {ProplexWeb.UserAuthorization, {:require_permission, :issues, :view_all}}
       ] do
       live "/admin/issues", IssueLive.AdminIndex, :index
+    end
+
+    live_session :require_apartments_manage,
+      on_mount: [
+        {ProplexWeb.UserAuth, :require_authenticated},
+        {ProplexWeb.UserAuthorization, {:require_permission, :apartments, :manage}}
+      ] do
+      live "/admin/apartments", ApartmentLive.AdminIndex, :index
     end
 
     live_session :require_profiles_view,
