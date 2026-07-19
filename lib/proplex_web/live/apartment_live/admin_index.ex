@@ -8,11 +8,16 @@ defmodule ProplexWeb.ApartmentLive.AdminIndex do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
       <div class="w-full">
-        <div class="mb-6">
-          <h1 class="text-2xl font-semibold tracking-tight">Apartments</h1>
-          <p class="mt-1 text-sm text-base-content/70">
-            Every unit across every building, with current occupant.
-          </p>
+        <div class="mb-6 flex items-start justify-between gap-3">
+          <div>
+            <h1 class="text-2xl font-semibold tracking-tight">Apartments</h1>
+            <p class="mt-1 text-sm text-base-content/70">
+              Every unit across every building, with current occupant.
+            </p>
+          </div>
+          <.link navigate={~p"/admin/apartments/new"} class="btn btn-primary btn-sm">
+            <.icon name="hero-plus" class="size-4" /> New apartment
+          </.link>
         </div>
 
         <form phx-change="filter" class="mb-4 flex flex-wrap items-end gap-4">
@@ -119,7 +124,12 @@ defmodule ProplexWeb.ApartmentLive.AdminIndex do
                 <tbody>
                   <tr :for={row <- rows} class="hover">
                     <td class="whitespace-nowrap font-medium">
-                      {row.apartment.building_name}
+                      <.link
+                        navigate={~p"/admin/apartments/#{row.apartment.id}/edit"}
+                        class="hover:underline"
+                      >
+                        {row.apartment.building_name}
+                      </.link>
                     </td>
                     <td class="whitespace-nowrap">
                       {row.apartment.unit_number}

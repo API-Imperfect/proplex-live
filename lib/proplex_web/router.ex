@@ -118,6 +118,8 @@ defmodule ProplexWeb.Router do
         {ProplexWeb.UserAuthorization, {:require_permission, :apartments, :manage}}
       ] do
       live "/admin/apartments", ApartmentLive.AdminIndex, :index
+      live "/admin/apartments/new", ApartmentLive.AdminForm, :new
+      live "/admin/apartments/:id/edit", ApartmentLive.AdminForm, :edit
     end
 
     live_session :require_profiles_view,
