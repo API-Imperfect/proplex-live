@@ -244,6 +244,24 @@ defmodule Proplex.Apartments do
     |> Repo.all()
   end
 
+  def list_eligible_tenants do
+    active_tenant_ids_query =
+      from t in Tenancy,
+        where: is_nil(t.end_date),
+        select: t.user_id
+
+    from(u in Proplex.Accounts.User,
+      join: ur in Proplex.Authorization.UserRole,
+      on: ur.user_id == u.id,
+      join: r in assoc(ur, :role),
+      where: r.name == "tenant",
+      where: u.id not in subquery(active_tenant_ids_query),
+      order_by: u.username,
+      distinct: true
+    )
+    |> Repo.all()
+  end
+
   def list_building_names do
     Repo.all(
       from a in Apartment,

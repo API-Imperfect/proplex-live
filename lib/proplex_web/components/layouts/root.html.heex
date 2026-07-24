@@ -71,6 +71,11 @@
               All Issues
             </.link>
 
+            <.link :if={Proplex.Authorization.can?(@current_scope.user, :manage, :apartments)}
+              navigate={~p"/admin/apartments"} class="btn btn-ghost btn-sm">
+              All Apartments
+            </.link>
+
             <.link navigate={~p"/users/settings"} class="btn btn-ghost btn-sm">
               Settings
             </.link>

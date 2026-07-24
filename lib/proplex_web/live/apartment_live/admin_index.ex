@@ -125,7 +125,7 @@ defmodule ProplexWeb.ApartmentLive.AdminIndex do
                   <tr :for={row <- rows} class="hover">
                     <td class="whitespace-nowrap font-medium">
                       <.link
-                        navigate={~p"/admin/apartments/#{row.apartment.id}/edit"}
+                        navigate={~p"/admin/apartments/#{row.apartment.id}"}
                         class="hover:underline"
                       >
                         {row.apartment.building_name}

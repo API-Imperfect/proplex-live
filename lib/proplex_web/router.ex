@@ -1,5 +1,4 @@
 defmodule ProplexWeb.Router do
-  alias Proplex.Apartments.Apartment
   use ProplexWeb, :router
 
   import ProplexWeb.UserAuth
@@ -119,6 +118,7 @@ defmodule ProplexWeb.Router do
       ] do
       live "/admin/apartments", ApartmentLive.AdminIndex, :index
       live "/admin/apartments/new", ApartmentLive.AdminForm, :new
+      live "/admin/apartments/:id", ApartmentLive.AdminShow, :show
       live "/admin/apartments/:id/edit", ApartmentLive.AdminForm, :edit
     end
 
