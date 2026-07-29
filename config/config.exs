@@ -44,6 +44,14 @@ config :proplex, ProplexWeb.Endpoint,
 # at the `config/runtime.exs`.
 config :proplex, Proplex.Mailer, adapter: Swoosh.Adapters.Local
 
+config :proplex, Oban,
+  engine: Oban.Engines.Basic,
+  repo: Proplex.Repo,
+  queues: [mailers: 10],
+  plugins: [
+    {Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7}
+  ]
+
 # Configure esbuild (the version is required)
 config :esbuild,
   version: "0.25.4",

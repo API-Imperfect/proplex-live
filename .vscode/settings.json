@@ -11,12 +11,19 @@
     "statusBar.background": "#154b8e",
     "statusBar.foreground": "#e7e7e7",
     "statusBarItem.hoverBackground": "#1c62ba",
-    "statusBarItem.remoteBackground": "#154b8e",
+    "statusBarItem.remoteBackground": "#e23d87",
     "statusBarItem.remoteForeground": "#e7e7e7",
     "titleBar.activeBackground": "#154b8e",
     "titleBar.activeForeground": "#e7e7e7",
     "titleBar.inactiveBackground": "#154b8e99",
-    "titleBar.inactiveForeground": "#e7e7e799"
+    "titleBar.inactiveForeground": "#e7e7e799",
+    "activityBarTop.activeBackground": "#1c62ba",
+    "activityBarTop.background": "#1c62ba",
+    "activityBarTop.foreground": "#e7e7e7",
+    "activityBarTop.inactiveForeground": "#e7e7e799",
+    "commandCenter.foreground": "#e7e7e7",
+    "statusBar.debuggingBackground": "#154b8e",
+    "statusBar.debuggingForeground": "#e7e7e7"
   },
 	"editor.defaultFormatter": "JakeBecker.elixir-ls"
 }

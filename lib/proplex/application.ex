@@ -13,6 +13,7 @@ defmodule Proplex.Application do
       {DNSCluster, query: Application.get_env(:proplex, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Proplex.PubSub},
       {Proplex.RateLimit, [clean_period: :timer.minutes(10)]},
+      {Oban, Application.fetch_env!(:proplex, Oban)},
       # Start a worker by calling: Proplex.Worker.start_link(arg)
       # {Proplex.Worker, arg},
       # Start to serve requests, typically the last entry

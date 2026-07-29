@@ -33,6 +33,10 @@ defmodule Proplex.Issues do
               priority: issue.priority
             )
 
+            %{issue_id: issue.id}
+            |> Proplex.Workers.IssueReportedEmail.new()
+            |> Oban.insert()
+
             {:ok, issue}
 
           other ->
@@ -54,6 +58,10 @@ defmodule Proplex.Issues do
           issue_id: updated.id,
           assigned_technician_id: updated.assigned_technician_id
         )
+
+        %{issue_id: updated.id}
+        |> Proplex.Workers.IssueAssignedEmail.new()
+        |> Oban.insert()
 
         {:ok, updated}
 
@@ -97,6 +105,10 @@ defmodule Proplex.Issues do
           assigned_technician_id: updated.assigned_technician_id,
           resolved_on: Date.to_iso8601(updated.resolved_on)
         )
+
+        %{issue_id: updated.id}
+        |> Proplex.Workers.IssueResolvedEmail.new()
+        |> Oban.insert()
 
         {:ok, updated}
 

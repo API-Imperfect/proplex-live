@@ -68,7 +68,8 @@ defmodule Proplex.MixProject do
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
       {:image, "~> 0.54"},
-      {:hammer, "~> 7.0"}
+      {:hammer, "~> 7.0"},
+      {:oban, "~> 2.18"}
     ]
   end
 
