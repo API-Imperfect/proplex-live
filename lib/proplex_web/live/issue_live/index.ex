@@ -2,6 +2,7 @@ defmodule ProplexWeb.IssueLive.Index do
   use ProplexWeb, :live_view
 
   alias Proplex.Issues
+  alias Proplex.Issues.Broadcast
   import ProplexWeb.IssueLive.Badges
 
   @impl true
@@ -78,8 +79,17 @@ defmodule ProplexWeb.IssueLive.Index do
   def mount(_params, _session, socket) do
     user = socket.assigns.current_scope.user
 
+    if connected?(socket), do: Broadcast.subscribe_to_reporter(user.id)
+
     issues = Issues.list_issues_for_reporter(user)
 
     {:ok, assign(socket, :issues, issues)}
+  end
+
+  @impl true
+  def handle_info({:issue_event, _event, _issue_id}, socket) do
+    user = socket.assigns.current_scope.user
+
+    {:noreply, assign(socket, :issues, Issues.list_issues_for_reporter(user))}
   end
 end

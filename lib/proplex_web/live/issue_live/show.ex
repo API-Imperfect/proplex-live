@@ -4,6 +4,8 @@ defmodule ProplexWeb.IssueLive.Show do
   alias Proplex.Issues
   alias Proplex.Authorization
 
+  alias Proplex.Issues.Broadcast
+
   import ProplexWeb.IssueLive.Badges
 
   @impl true
@@ -154,6 +156,8 @@ defmodule ProplexWeb.IssueLive.Show do
       issue ->
         cond do
           issue.reporter_id == user.id ->
+            if connected?(socket), do: Broadcast.subscribe_to_issue(issue.id)
+
             {:ok,
              socket
              |> assign(:issue, issue)
@@ -164,6 +168,8 @@ defmodule ProplexWeb.IssueLive.Show do
              |> assign(:back_label, "Back to My Issues")}
 
           Authorization.has_role?(user, "admin") ->
+            if connected?(socket), do: Broadcast.subscribe_to_issue(issue.id)
+
             {:ok,
              socket
              |> assign(:issue, issue)
@@ -174,6 +180,8 @@ defmodule ProplexWeb.IssueLive.Show do
              |> assign(:back_label, "Back")}
 
           issue.assigned_technician_id == user.id ->
+            if connected?(socket), do: Broadcast.subscribe_to_issue(issue.id)
+
             {:ok,
              socket
              |> assign(:issue, issue)
@@ -311,6 +319,34 @@ defmodule ProplexWeb.IssueLive.Show do
        socket
        |> put_flash(:error, "You can only delete your own reports.")
        |> push_navigate(to: ~p"/")}
+    end
+  end
+
+  @impl true
+  def handle_info({:issue_event, :deleted, _issue_id}, socket) do
+    {:noreply,
+     socket
+     |> put_flash(:error, "This issue was deleted.")
+     |> push_navigate(to: socket.assigns.back_path)}
+  end
+
+  def handle_info({:issue_event, _event, _issue_id}, socket) do
+    case Issues.get_issue(socket.assigns.issue.id) do
+      nil ->
+        {:noreply,
+         socket
+         |> put_flash(:error, "This issue is no longer available.")
+         |> push_navigate(to: socket.assigns.back_path)}
+
+      issue ->
+        socket =
+          if socket.assigns.can_assign? do
+            assign(socket, :assign_form, build_assign_form(issue))
+          else
+            socket
+          end
+
+        {:noreply, assign(socket, :issue, issue)}
     end
   end
 end
