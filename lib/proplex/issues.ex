@@ -4,6 +4,7 @@ defmodule Proplex.Issues do
 
   alias Proplex.Repo
   alias Proplex.Apartments
+  alias Proplex.Issues.Broadcast
   alias Proplex.Issues.Issue
 
   def report_issue(%{id: reporter_id} = reporter, attrs) do
@@ -37,6 +38,8 @@ defmodule Proplex.Issues do
             |> Proplex.Workers.IssueReportedEmail.new()
             |> Oban.insert()
 
+            Broadcast.issue_event(issue, :reported)
+
             {:ok, issue}
 
           other ->
@@ -46,6 +49,8 @@ defmodule Proplex.Issues do
   end
 
   def assign_technician(%Issue{} = issue, technician_id) do
+    previous_tech_id = issue.assigned_technician_id
+
     result =
       issue
       |> Issue.assign_changeset(%{"assigned_technician_id" => technician_id})
@@ -62,6 +67,12 @@ defmodule Proplex.Issues do
         %{issue_id: updated.id}
         |> Proplex.Workers.IssueAssignedEmail.new()
         |> Oban.insert()
+
+        Broadcast.issue_event(updated, :assigned)
+
+        if previous_tech_id && previous_tech_id != updated.assigned_technician_id do
+          Broadcast.notify_previous_technician(previous_tech_id, updated.id)
+        end
 
         {:ok, updated}
 
@@ -83,6 +94,8 @@ defmodule Proplex.Issues do
           issue_id: updated.id,
           assigned_technician_id: updated.assigned_technician_id
         )
+
+        Broadcast.issue_event(updated, :status_changed)
 
         {:ok, updated}
 
@@ -110,6 +123,8 @@ defmodule Proplex.Issues do
         |> Proplex.Workers.IssueResolvedEmail.new()
         |> Oban.insert()
 
+        Broadcast.issue_event(updated, :status_changed)
+
         {:ok, updated}
 
       other ->
@@ -130,6 +145,8 @@ defmodule Proplex.Issues do
           issue_id: deleted.id,
           reporter_id: deleted.reporter_id
         )
+
+        Broadcast.issue_event(deleted, :deleted)
 
         {:ok, deleted}
 
