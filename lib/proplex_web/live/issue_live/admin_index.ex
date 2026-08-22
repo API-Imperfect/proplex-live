@@ -2,6 +2,7 @@ defmodule ProplexWeb.IssueLive.AdminIndex do
   use ProplexWeb, :live_view
 
   alias Proplex.Issues
+  alias Proplex.Issues.Broadcast
   import ProplexWeb.IssueLive.Badges
 
   @impl true
@@ -90,8 +91,15 @@ defmodule ProplexWeb.IssueLive.AdminIndex do
 
   @impl true
   def mount(_params, _session, socket) do
+    if connected?(socket), do: Broadcast.subscribe_all()
     issues = Issues.list_all_issues()
 
     {:ok, assign(socket, :issues, issues)}
+  end
+
+  @impl true
+  def handle_info({:issue_event, _event, _issue_id}, socket) do
+
+    {:norepy, assign(socket, :issues, Issues.list_all_issues())}
   end
 end
