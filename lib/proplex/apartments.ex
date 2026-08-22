@@ -262,7 +262,7 @@ defmodule Proplex.Apartments do
     |> Repo.all()
   end
 
-  def archive_apartment(%Apartment{}=apartment) do
+  def archive_apartment(%Apartment{} = apartment) do
     cond do
       get_active_tenancy_for_apartment(apartment) != nil ->
         {:error, :active_tenancy_exists}
@@ -274,8 +274,7 @@ defmodule Proplex.Apartments do
         result =
           apartment
           |> Ecto.Changeset.change(
-            archived_at: Datetime.utc_now()
-            |> Datetime.truncate(:second)
+            archived_at: Datetime.utc_now() |> Datetime.truncate(:second)
           )
           |> Repo.update()
 
