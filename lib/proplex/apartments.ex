@@ -72,15 +72,23 @@ defmodule Proplex.Apartments do
     end
   end
 
+  @spec archive_apartment(%Proplex.Apartments.Apartment{:id => any(), optional(any()) => any()}) ::
+          any()
   def archive_apartment(%Apartment{} = apartment) do
-    case get_active_tenancy_for_apartment(apartment) do
-      nil ->
+    cond do
+      get_active_tenancy_for_apartment(apartment) != nil ->
+        {:error, :active_tenancy_exists}
+
+      list_pending_tenancies_for_apartment(apartment) != [] ->
+        {:error, :pending_tenancy_exists}
+
+      true ->
         result =
           apartment
           |> Ecto.Changeset.change(archived_at: DateTime.utc_now() |> DateTime.truncate(:second))
           |> Repo.update()
 
-        case result do
+      case result do
           {:ok, archived} ->
             Logger.warning("Apartment archived",
               event: :apartment_archived,
@@ -95,8 +103,6 @@ defmodule Proplex.Apartments do
             other
         end
 
-      _tenancy ->
-        {:error, :active_tenancy_exists}
     end
   end
 
