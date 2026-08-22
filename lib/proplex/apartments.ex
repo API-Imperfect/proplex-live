@@ -334,6 +334,7 @@ defmodule Proplex.Apartments do
         invite_email: pending.invite_email,
         start_date: Date.to_iso8601(pending.start_date))
 
+      enqueue_invite_email(pending.id, raw_token)
       {:ok, pending, raw_token}
 
       other ->
@@ -398,6 +399,8 @@ defmodule Proplex.Apartments do
         pending_tenancy_id: updated.id,
         apartment_id: updated.apartment_id,
         invite_email: updated.invite_email)
+
+        enqueue_invite_email(updated.id, raw_token)
 
         {:ok, updated, raw_token}
 
@@ -492,6 +495,12 @@ defmodule Proplex.Apartments do
     from [_a, t, _u] in query, where: not is_nil(t.id)
   end
 
+  defp enqueue_invite_email(pending_tenancy_id, raw_token) do
+    %{pending_tenancy_id: pending_tenancy_id, raw_token: raw_token}
+    |> Proplex.Workers.PendingTenancyInviteEmail.new()
+    |> Oban.insert()
+
+  end
 
 
 end
