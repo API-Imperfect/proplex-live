@@ -72,8 +72,6 @@ defmodule Proplex.Apartments do
     end
   end
 
-  @spec archive_apartment(%Proplex.Apartments.Apartment{:id => any(), optional(any()) => any()}) ::
-          any()
   def archive_apartment(%Apartment{} = apartment) do
     cond do
       get_active_tenancy_for_apartment(apartment) != nil ->
@@ -268,38 +266,6 @@ defmodule Proplex.Apartments do
     |> Repo.all()
   end
 
-  def archive_apartment(%Apartment{} = apartment) do
-    cond do
-      get_active_tenancy_for_apartment(apartment) != nil ->
-        {:error, :active_tenancy_exists}
-
-      list_pending_tenancies_for_apartment(apartment) != [] ->
-        {:error, :pending_tenancy_exists}
-
-      true ->
-        result =
-          apartment
-          |> Ecto.Changeset.change(
-            archived_at: Datetime.utc_now() |> Datetime.truncate(:second)
-          )
-          |> Repo.update()
-
-      case result do
-        {:ok, archived} ->
-          Logger.warning("Apartment archived",
-          event: :apartment_archived,
-          apartment_id: archived.id,
-          building_name: archived.building_name,
-          unit_number: archived.unit_number)
-      {:ok, archived}
-
-      other ->
-        other
-      end
-    end
-  end
-
-
   def list_building_names do
     Repo.all(
       from a in Apartment,
@@ -310,6 +276,72 @@ defmodule Proplex.Apartments do
   end
 
   @pending_tenancy_token_validity_days 7
+
+  def invite_tenant(%Apartment{}=apartment, attrs) do
+    email =
+      attrs[:invite_email] || attrs["invite_email"] || attrs[:email]
+      || attrs["email"]
+
+    start_date =
+      attrs[:start_date] || attrs["start_date"] || Date.utc_today()
+
+    cond do
+      not is_binary(email) or email == "" ->
+        {:error, :invite_email_required}
+
+      apartment.archived_at != nil ->
+        {:error, :apartment_archived}
+
+      get_active_tenancy_for_apartment(apartment) != nil ->
+        {:error, :apartment_occupied}
+
+      true ->
+        dispatch_invite_tenant(apartment, String.downcase(email), start_date)
+    end
+  end
+
+  defp dispatch_invite_tenant(apartment, email, start_date) do
+    case Proplex.Accounts.get_user_by_email(email) do
+      nil ->
+        case create_pending_tenancy(%{
+          apartment_id: apartment.id,
+          invite_email: email,
+          start_date: start_date
+        })do
+          {:ok, pending, raw_token} ->
+            {:ok, :invite_sent, pending, raw_token}
+          other ->
+            other
+        end
+
+        %_{} = user ->
+          case get_active_tenancy_for_user(user) do
+            nil ->
+              case start_tenancy(%{
+                user_id: user.id,
+                apartment_id: apartment.id,
+                start_date: start_date
+              })do
+                {:ok, tenancy}->
+                  Logger.info("Invite auto-linked existing user",
+                  event: :invite_auto_linked,
+                  user_id: user.id,
+                  apartment_id: apartment.id,
+                  invite_email: email,
+                  tenancy_id: tenancy.id
+
+                  )
+
+                  {:ok, :tenancy_started, tenancy}
+                other ->
+                  other
+              end
+
+              _active ->
+                {:error, :user_has_active_tenancy}
+          end
+    end
+  end
 
   def create_pending_tenancy(attrs) do
     {raw_token, token_hash, expires_at} = generate_invite_credentials()

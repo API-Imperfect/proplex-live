@@ -22,7 +22,7 @@ defmodule ProplexWeb.ApartmentLive.AdminShow do
           <div class="flex items-start justify-between gap-3 border-b border-base-300 pb-4">
             <div>
               <h1 class="text-2xl font-semibold tracking-tight">
-                {@apartment.building_name} '  Unit {@apartment.unit_number}
+                {@apartment.building_name} · Unit {@apartment.unit_number}
               </h1>
               <p class="mt-1 text-sm text-base-content/70">
                 {@apartment.floor}
@@ -101,53 +101,165 @@ defmodule ProplexWeb.ApartmentLive.AdminShow do
             :if={is_nil(@active_tenancy) and is_nil(@apartment.archived_at)}
             class="mt-6 rounded-box bg-base-100 px-6 py-4"
           >
+          <div class="flex items-center justify-between gap-3">
             <h2 class="text-xs font-semibold uppercase tracking-wide text-base-content/60">
               Start a tenancy
             </h2>
 
-            <%= case @eligible_tenants do %>
-              <% [] -> %>
-                <p class="mt-3 text-sm text-base-content/70">
-                  No eligible tenants right now - every tenant-role user is already housed. Register a new tenant via the signup flow, then come back here.
-                </p>
-              <% _tenants -> %>
-                <.form
-                  for={@start_form}
-                  id="start-tenancy-form"
-                  phx-submit="start_tenancy"
-                  class="mt-3 flex flex-wrap items-end gap-3"
-                >
-                  <div class="min-w-[14rem] flex-1">
-                    <.input
-                      field={@start_form[:user_id]}
-                      type="select"
-                      label="Tenant"
-                      options={@tenant_options}
-                      prompt="- Select a tenant -"
-                    />
-                  </div>
+            <div class="join">
+            <button
+             type="button"
+            phx-click="toggle_mode"
+            phx-value-mode="invite"
+            class={[
+              "btn btn-sm join-item",
+              @invite_mode == :invite && "btn-primary"
+            ]}
+            >
+            Invite by email
 
-                  <div class="min-w-[10rem] flex-1">
-                    <.input
-                      field={@start_form[:start_date]}
-                      type="date"
-                      label="Start date"
+            </button>
+
+            <button
+             type="button"
+            phx-click="toggle_mode"
+            phx-value-mode="assign"
+            class={[
+              "btn btn-sm join-item",
+              @invite_mode == :assign && "btn-primary"
+            ]}
+            >
+            Assign existing user
+
+            </button>
+            </div>
+            </div>
+
+            <div :if={@invite_mode == :invite} class="mt-4">
+            <p class="mb-3 text-sm text-base-content/70">
+            Enter the prospective tenant's email. They'll receive a secure invite link to register. If the email already belongs to an existing user, they'll be auto-linked to this unit instead
+            </p>
+            <.form
+             for={@invite_form}
+             id="invite-tenant-form"
+            phx-submit="invite_tenant"
+            class="flex flex-wrap items-end gap-3"
+            >
+            <div class="min-w-[16rem] flex-1">
+            <.input
+            field={@invite_form[:invite_email]}
+            type="email"
+            label="Tenant email"
+            placeholder="tenant@example.com"
+            required
+            />
+            </div>
+
+            <div class="min-w-[10rem] flex-1">
+            <.input
+            field={@invite_form[:start_date]}
+            type="date"
+            label="Start date"
+
+            />
+            </div>
+             <div class="fieldset mb-2">
+                 <span class="label mb-1 block select-none opacity-0" aria-hidden="true">
+                 spacer
+                 </span>
+                 <.button phx-disable-with="Sending..." class="btn btn-primary">
+                 <.icon name="hero-paper-airplane" class="size-4"/> Send invite
+                 </.button>
+             </div>
+           </.form>
+         </div>
+
+         <div :if={@invite_mode == :assign} class="mt-4">
+             <%= case @eligible_tenants do %>
+               <% [] -> %>
+                 <p class="text-sm text-base-content/70">
+                   No eligible tenants right now — every tenant-role user is already housed, or there aren't any registered yet. Switch to "Invite by email" to bring someone new onboard.
+                 </p>
+               <% _tenants -> %>
+                 <.form
+                   for={@start_form}
+                   id="start-tenancy-form"
+                   phx-submit="start_tenancy"
+                   class="flex flex-wrap items-end gap-3"
+                 >
+                   <div class="min-w-[14rem] flex-1">
+                     <.input
+                       field={@start_form[:user_id]}
+                       type="select"
+                       label="Tenant"
+                       options={@tenant_options}
+                       prompt="— Select a tenant —"
                     />
-                  </div>
-                  <div class="fieldset mb-2">
-                    <span
-                      class="label mb-1 block select-none opacity-0"
-                      aria-hidden="true"
-                    >
-                      spacer
-                    </span>
-                    <.button phx-disable-with="Starting..." class="btn btn-primary">
-                      <.icon name="hero-user-plus" class="size-4" /> Start tenancy
-                    </.button>
-                  </div>
-                </.form>
-            <% end %>
-          </section>
+                   </div>
+                   <div class="min-w-[10rem] flex-1">
+                     <.input
+                       field={@start_form[:start_date]}
+                       type="date"
+                       label="Start date"
+                    />
+                   </div>
+                   <div class="fieldset mb-2">
+                     <span class="label mb-1 block select-none opacity-0" aria-hidden="true">
+                       spacer
+                     </span>
+                     <.button phx-disable-with="Starting..." class="btn btn-primary">
+                       <.icon name="hero-user-plus" class="size-4" /> Start tenancy
+                     </.button>
+                   </div>
+                 </.form>
+             <% end %>
+           </div>
+         </section>
+
+         <section :if={@pending_invites != []}
+          class="mt-6 rounded-box bg-base-100 px-6 py-4"
+         >
+         <h2 class="text-xs font-semibold uppercase tracking-wide text-base-content/60">
+             Pending invites
+        </h2>
+         <ul class="mt-3 space-y-3">
+             <li
+               :for={invite <- @pending_invites}
+               class="flex flex-wrap items-center justify-between gap-3 rounded-box border border-base-300 px-4 py-3 text-sm"
+             >
+               <div>
+                 <div class="font-medium">{invite.invite_email}</div>
+                 <div class="text-xs text-base-content/60">
+                   Start: {Calendar.strftime(invite.start_date, "%b %-d, %Y")} · Expires: {Calendar.strftime(
+                     invite.expires_at,
+                     "%b %-d, %Y"
+                   )}
+                 </div>
+               </div>
+               <div class="flex gap-2">
+
+                 <.button
+                   phx-click="resend_invite"
+                   phx-value-id={invite.id}
+                   phx-disable-with="Resending..."
+                   class="btn btn-outline btn-sm"
+                 >
+                   <.icon name="hero-arrow-path" class="size-4" /> Resend
+                 </.button>
+
+                 <.button
+                   phx-click="cancel_invite"
+                   phx-value-id={invite.id}
+                   phx-disable-with="Cancelling..."
+                   data-confirm="Cancel this invite? The link in the email will stop working."
+                   class="btn btn-outline btn-error btn-sm"
+                 >
+                   <.icon name="hero-x-mark" class="size-4" /> Cancel
+                 </.button>
+               </div>
+             </li>
+         </ul>
+         </section>
 
           <section
             :if={is_nil(@active_tenancy) and not is_nil(@apartment.archived_at)}
@@ -269,9 +381,78 @@ defmodule ProplexWeb.ApartmentLive.AdminShow do
     end
   end
 
+  def handle_event("toggle_mode", %{"mode" => "invite"}, socket ) do
+    {:noreply, assign(socket, :invite_mode, :invite)}
+  end
+
+  def handle_event("toggle_mode", %{"mode" => "assign"}, socket ) do
+    {:noreply, assign(socket, :invite_mode, :assign)}
+  end
+
+  def handle_event("invite_tenant", %{"invite" => attrs}, socket) do
+    case Apartments.invite_tenant(socket.assigns.apartment, attrs) do
+      {:ok, :invite_sent, _pending, _raw_token} ->
+        {:noreply,
+      socket
+      |> put_flash(:info, "Invite sent to #{attrs["invite_email"]}.")
+      |> load_tenancy_state()}
+
+      {:ok, :tenancy_started, _tenancy} ->
+        {:noreply,
+      socket
+      |> put_flash(:info, "#{attrs["invite_email"]} already has a Proplex account - auto-linked to this unit.")
+      |> load_tenancy_state()}
+
+     {:error, :invite_email_required} ->
+      {:noreply, put_flash(socket, :error, "Email is required")}
+
+    {:error, :apartment_archived} ->
+      {:noreply, put_flash(socket, :error, "This apartment is archived. Unarchive it first.")}
+
+      {:error, :apartment_occupied} ->
+      {:noreply, put_flash(socket, :error, "This apartment is already occupied")}
+
+    {:error, :user_has_active_tenancy} ->
+      {:noreply, put_flash(socket, :error, "That email already has an active tenancy elsewhere. End it first to move them.")}
+
+    {:error, %Ecto.Changeset{}= changeset} ->
+      {:noreply, assign(socket, :invite_form, to_form(changeset, as: "invite"))}
+
+    end
+  end
+
+  def handle_event("resend_invite", %{"id" => id_str}, socket) do
+    pending = Apartments.get_pending_tenancy!(String.to_integer(id_str))
+
+    case Apartments.regenerate_pending_tenancy_token(pending) do
+      {:ok, _updated, _raw_token} ->
+        {:noreply,
+         socket
+        |> put_flash(:info, "Invite resent to #{pending.invite_email}.")
+        |> load_tenancy_state()}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "Couldn't resend the invite.")}
+    end
+  end
+
+  def handle_event("cancel_invite", %{"id" => id_str}, socket) do
+    pending = Apartments.get_pending_tenancy!(String.to_integer(id_str))
+
+    case Apartments.cancel_pending_tenancy(pending) do
+      {:ok, _} ->
+        {:noreply,
+         socket
+        |> put_flash(:info, "Invite cancelled.")
+        |> load_tenancy_state()}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "Couldn't cancel the invite.")}
+    end
+  end
+
   defp load_tenancy_state(socket) do
     apartment = socket.assigns.apartment
-
     tenancies = Apartments.list_tenancies_for_apartment(apartment)
 
     active = Enum.find(tenancies, &is_nil(&1.end_date))
@@ -284,17 +465,23 @@ defmodule ProplexWeb.ApartmentLive.AdminShow do
         []
       end
 
-    socket
-    |> assign(:active_tenancy, active)
-    |> assign(:tenancy_history, history)
-    |> assign(:eligible_tenants, eligible_tenants)
-    |> assign(
-      :tenant_options,
-      Enum.map(eligible_tenants, &{"@#{&1.username} - #{&1.email}", &1.id})
-    )
-    |> assign(:start_form, build_start_form())
-    |> assign(:end_form, build_end_form(active))
+      pending_invites = Apartments.list_pending_tenancies_for_apartment(apartment)
+
+      socket
+      |> assign(:active_tenancy, active)
+      |> assign(:tenancy_history, history)
+      |> assign(:eligible_tenants, eligible_tenants)
+      |> assign(
+        :tenant_options,
+        Enum.map(eligible_tenants, &{"@#{&1.username} - #{&1.email}", &1.id})
+      )
+      |> assign(:start_form, build_start_form())
+      |> assign(:end_form, build_end_form(active))
+      |> assign(:invite_form, build_invite_form())
+      |> assign(:pending_invites, pending_invites)
+      |> assign_new(:invite_mode, fn -> :invite end)
   end
+
 
   defp build_start_form do
     %Tenancy{}
@@ -309,4 +496,10 @@ defmodule ProplexWeb.ApartmentLive.AdminShow do
   end
 
   defp build_end_form(nil), do: nil
+
+  defp build_invite_form do
+    %Proplex.Apartments.PendingTenancy{}
+    |> Ecto.Changeset.change(%{start_date: Date.utc_today()})
+    |> to_form(as: "invite")
+  end
 end
