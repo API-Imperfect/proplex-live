@@ -100,6 +100,6 @@ defmodule ProplexWeb.IssueLive.AdminIndex do
   @impl true
   def handle_info({:issue_event, _event, _issue_id}, socket) do
 
-    {:norepy, assign(socket, :issues, Issues.list_all_issues())}
+    {:noreply, assign(socket, :issues, Issues.list_all_issues())}
   end
 end

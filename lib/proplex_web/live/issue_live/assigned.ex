@@ -77,6 +77,6 @@ defmodule ProplexWeb.IssueLive.Assigned do
   @impl true
   def handle_info({:issue_event, _event, _issue_id}, socket) do
     user = socket.assigns.current_scope.user
-    {:norepy, assign(socket, :issues, Issues.list_issues_for_technician(user))}
+    {:noreply, assign(socket, :issues, Issues.list_issues_for_technician(user))}
   end
 end

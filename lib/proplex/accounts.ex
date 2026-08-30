@@ -118,43 +118,50 @@ defmodule Proplex.Accounts do
 
   """
   def register_user(attrs) do
-    changeset = User.registration_changeset(%User{}, attrs)
-
-    multi =
-      Ecto.Multi.new()
-      |> Ecto.Multi.insert(:user, changeset)
-      |> Ecto.Multi.run(:profile, fn _repo, %{user: user} ->
-        %{user_id: user.id}
-        |> Profile.create_changeset()
-        |> Repo.insert()
-      end)
-      |> Ecto.Multi.run(:role, fn _repo, %{user: user} ->
-        Proplex.Authorization.assign_role(user, "tenant")
-      end)
-
-    case Repo.transact(multi) do
+    attrs
+    |> register_user_multi()
+    |> Repo.transaction()
+    |> case do
       {:ok, %{user: user}} ->
         Logger.info("User registered",
-          event: :user_registered,
-          user_id: user.id,
-          email: user.email
-        )
+        event: :user_registered,
+        user_id: user.id,
+        email: user.email)
 
         {:ok, user}
 
-      {:error, :user, changeset, _changes} ->
-        {:error, changeset}
+        {:error, :user, changeset, _changes} ->
+          {:error, changeset}
 
-      {:error, failed_step, failed_value, _changes} ->
-        Logger.warning("Registration transaction failed at unexpected step",
+        {:error, failed_step, failed_value, _changes} ->
+          Logger.warning("Registration transaction failed at unexpected step",
           event: :registration_failed,
           failed_step: failed_step,
           failed_value: inspect(failed_value)
-        )
 
-        {:error, :registration_failed}
+
+          )
+
+          {:error, :registration_failed}
     end
   end
+
+  def register_user_multi(attrs) do
+    changeset = User.registration_changeset(%User{}, attrs)
+
+    Ecto.Multi.new()
+    |> Ecto.Multi.insert(:user, changeset)
+    |> Ecto.Multi.run(:profile, fn _repo, %{user: user} ->
+      %{user_id: user.id}
+      |> Profile.create_changeset()
+      |> Repo.insert()
+    end)
+    |> Ecto.Multi.run(:role, fn _repo, %{user: user} ->
+      Proplex.Authorization.assign_role(user, "tenant")
+    end)
+  end
+
+
 
   ## Settings
 

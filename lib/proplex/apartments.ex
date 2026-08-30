@@ -534,5 +534,51 @@ defmodule Proplex.Apartments do
 
   end
 
+  def accept_invite(%PendingTenancy{} = pending, user_attrs) do
+    user_attrs = Map.put(user_attrs, "email", pending.invite_email)
 
+    result =
+      Proplex.Accounts.register_user_multi(user_attrs)
+      |> Ecto.Multi.run(:confirmed_user, fn repo, %{user: user} ->
+        user
+        |> Proplex.Accounts.User.confirm_changeset()
+        |> repo.update()
+      end)
+      |> Ecto.Multi.run(:tenancy, fn repo, %{user: user} ->
+        %Tenancy{}
+        |> Tenancy.create_changeset(%{
+          user_id: user.id,
+          apartment_id: pending.apartment_id,
+          start_date: pending.start_date
+        })
+        |> repo.insert()
+      end)
+      |> Ecto.Multi.delete(:pending_tenancy, pending)
+      |> Repo.transaction()
+
+    case result do
+      {:ok, %{confirmed_user: user, tenancy: tenancy}} ->
+        Logger.info("Invite accepted",
+        event: :invite_accepted,
+        pending_tenancy_id: pending.id,
+        user_id: user.id,
+        tenancy_id: tenancy.id,
+        apartment_id: pending.apartment_id,
+        invite_email: user.email)
+
+        {:ok, user, tenancy}
+
+        {:error, :user, changeset, _changes} ->
+          {:error, changeset}
+
+        {:error, step, value, _changes} ->
+          Logger.warning("Invite acceptance failed at unexpected step",
+          event: :invite_acceptance_failed,
+          pending_tenancy_id: pending.id,
+          failed_step: step,
+          failed_value: inspect(value))
+
+          {:error, {step, value}}
+    end
+  end
 end
