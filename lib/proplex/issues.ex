@@ -2,12 +2,24 @@ defmodule Proplex.Issues do
   import Ecto.Query
   require Logger
 
+
   alias Proplex.Repo
   alias Proplex.Apartments
   alias Proplex.Issues.Broadcast
   alias Proplex.Issues.Issue
 
   def report_issue(%{id: reporter_id} = reporter, attrs) do
+
+   case Proplex.Accounts.missing_profile_fields_for_reporting(reporter) do
+     [] ->
+      do_report_issue(reporter_id, reporter, attrs)
+
+      missing ->
+        {:error, :profile_incomplete, missing}
+   end
+  end
+
+  defp do_report_issue(reporter_id, reporter, attrs) do
     case Apartments.get_current_apartment_for_user(reporter) do
       nil ->
         {:error, :no_active_tenancy}
@@ -27,20 +39,27 @@ defmodule Proplex.Issues do
         case result do
           {:ok, issue} ->
             Logger.info("Issue reported",
-              event: :issue_reported,
-              issue_id: issue.id,
-              reporter_id: issue.reporter_id,
-              apartment_id: issue.apartment_id,
-              priority: issue.priority
-            )
+            event: :issue_reported,
+            issue_id: issue.id,
+            reporter_id: issue.reporter_id,
+            apartment_id: issue.apartment_id,
+            priority: issue.priority)
 
-            %{issue_id: issue.id}
-            |> Proplex.Workers.IssueReportedEmail.new()
-            |> Oban.insert()
+          %{issue_id: issue.id}
+          |> Proplex.Workers.IssueReportedEmail.new()
+          |> Oban.insert()
 
-            Broadcast.issue_event(issue, :reported)
+          # Notifications.create(
+          #   reporter,
+          #   :issue_reported,
+          #   "Your maintenance issue was received",
+          #   "We've logged your report for '#{issue.title}'. Your landlord will assign a technician.",
+          #   "/issues"
+          # )
 
-            {:ok, issue}
+          Broadcast.issue_event(issue, :reported)
+
+          {:ok, issue}
 
           other ->
             other

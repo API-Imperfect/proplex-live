@@ -62,6 +62,32 @@ defmodule Proplex.Accounts do
     |> Repo.update()
   end
 
+ @profile_fields_required_for_reporting [:first_name, :last_name, :phone_number]
+
+ def profile_complete_for_reporting?(user) do
+   missing_profile_fields_for_reporting(user) == []
+ end
+
+ def missing_profile_fields_for_reporting(user) do
+   user = Repo.preload(user, :profile)
+
+   case user.profile do
+     nil ->
+      @profile_fields_required_for_reporting
+
+    %Profile{}=profile ->
+      Enum.filter(@profile_fields_required_for_reporting, fn field ->
+        blank?(Map.get(profile, field))
+      end)
+   end
+ end
+
+ defp blank?(nil), do: true
+ defp blank?(""), do: true
+ defp blank?(value) when is_binary(value), do: String.trim(value) == ""
+ defp blank?(_), do: false
+
+
   @doc """
   Gets a user by email and password.
 

@@ -112,18 +112,42 @@ defmodule ProplexWeb.IssueLive.New do
   def mount(_params, _session, socket) do
     user = socket.assigns.current_scope.user
 
+    case Proplex.Accounts.missing_profile_fields_for_reporting(user) do
+      [] ->
+        mount_ready(socket, user)
+
+      missing ->
+        mount_incomplete_profile(socket, missing)
+    end
+  end
+
+  defp mount_incomplete_profile(socket, missing_fields) do
+    field_str = missing_fields |> Enum.map(&humanize_field/1) |> Enum.join(", ")
+
+    {:ok, socket |> put_flash(:error, "Add your #{field_str} before reporting issues - technicians need them to reach you")
+    |> push_navigate(to: ~p"/users/settings/profile")
+  }
+  end
+
+  defp mount_ready(socket, user) do
     apartment = Apartments.get_current_apartment_for_user(user)
 
     changeset = Issues.change_issue_report()
 
-    {:ok, socket |> assign(:apartment, apartment) |> assign_form(changeset)}
+    {:ok, socket
+  |> assign(:apartment, apartment)
+|> assign_form(changeset)}
   end
 
+  defp humanize_field(:first_name), do: "first name"
+  defp humanize_field(:last_name), do: "last name"
+  defp humanize_field(:phone_number), do: "phone number"
+
   @impl true
-  def handle_event("validate", %{"issue" => _attrs}, socket) do
+  def handle_event("validate", %{"issue" => attrs}, socket) do
     changeset =
       %Issue{}
-      |> Issues.change_issue_report()
+      |> Issues.change_issue_report(attrs)
       |> Map.put(:action, :validate)
 
     {:noreply, assign_form(socket, changeset)}
@@ -137,18 +161,23 @@ defmodule ProplexWeb.IssueLive.New do
         {:noreply,
          socket
          |> put_flash(:info, "Issue reported. Your landlord will be notified.")
-         |> push_navigate(to: ~p"/users/my-apartment")}
-
-        {:noreply,
-         socket
-         |> put_flash(:info, "Issue reported. Your landlord will be notified")
          |> push_navigate(to: ~p"/issues")}
 
-      {:error, :no_active_tenancy} ->
+         {:error, :no_active_tenancy} ->
+
+          {:noreply,
+          socket
+          |> put_flash(:error, "You don't have and active apartment. Please contact your landlord")
+          |> push_navigate(to: ~p"/users/my-apartment")}
+
+      {:error, :profile_incomplete, missing_fields} ->
+
+        field_str = missing_fields |> Enum.map(&humanize_field/1) |> Enum.join(", ")
+
         {:noreply,
          socket
-         |> put_flash(:error, "You don't have an active apartment. Please contact your landlord.")
-         |> push_navigate(to: ~p"/users/my-apartment")}
+         |> put_flash(:error, "Add your #{field_str} before reporting issues - technicians need them to reach you.")
+         |> push_navigate(to: ~p"/users/settings/profile")}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign_form(socket, changeset)}
