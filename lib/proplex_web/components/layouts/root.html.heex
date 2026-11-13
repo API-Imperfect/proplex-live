@@ -1,87 +1,142 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="csrf-token" content={get_csrf_token()} />
-  <.live_title default="Proplex - Property Management" suffix=" · Proplex Framework">
-    {assigns[:page_title]}
-  </.live_title>
-  <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
-  <script defer phx-track-static type="text/javascript" src={~p"/assets/js/app.js"}>
-  </script>
-  <script>
-    (() => {
-      const setTheme = (theme) => {
-        if (theme === "system") {
-          localStorage.removeItem("phx:theme");
-          document.documentElement.removeAttribute("data-theme");
-        } else {
-          localStorage.setItem("phx:theme", theme);
-          document.documentElement.setAttribute("data-theme", theme);
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="csrf-token" content={get_csrf_token()} />
+    <.live_title default="Proplex - Property Management" suffix=" · Proplex Framework">
+      {assigns[:page_title]}
+    </.live_title>
+    <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
+    <script defer phx-track-static type="text/javascript" src={~p"/assets/js/app.js"}>
+    </script>
+    <script>
+      (() => {
+        const setTheme = (theme) => {
+          if (theme === "system") {
+            localStorage.removeItem("phx:theme");
+            document.documentElement.removeAttribute("data-theme");
+          } else {
+            localStorage.setItem("phx:theme", theme);
+            document.documentElement.setAttribute("data-theme", theme);
+          }
+        };
+        if (!document.documentElement.hasAttribute("data-theme")) {
+          setTheme(localStorage.getItem("phx:theme") || "system");
         }
-      };
-      if (!document.documentElement.hasAttribute("data-theme")) {
-        setTheme(localStorage.getItem("phx:theme") || "system");
-      }
-      window.addEventListener("storage", (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"));
+        window.addEventListener("storage", (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"));
 
-      window.addEventListener("phx:set-theme", (e) => setTheme(e.target.dataset.phxTheme));
-    })();
-  </script>
-</head>
+        window.addEventListener("phx:set-theme", (e) => setTheme(e.target.dataset.phxTheme));
+      })();
+    </script>
+  </head>
 
-<body>
-  <header class="border-b border-base-300 bg-base-100">
-    <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-      <div class="flex h-16 items-center justify-between">
-        <.link navigate={~p"/"} class="flex items-center gap-2 hover:opacity-80">
-          <.icon name="hero-building-office-2" class="size-7 text-primary" />
-          <span class="text-lg font-semibold tracking-tight text-base-content">Proplex</span>
-        </.link>
+  <body>
+    <header class="border-b border-base-300 bg-base-100">
+      <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        <div class="flex h-16 items-center justify-between">
+          <.link navigate={~p"/"} class="flex items-center gap-2 hover:opacity-80">
+            <.icon name="hero-building-office-2" class="size-7 text-primary" />
+            <span class="text-lg font-semibold tracking-tight text-base-content">Proplex</span>
+          </.link>
 
-        <nav class="flex items-center gap-2">
-          <%= if @current_scope do %>
-            <.link navigate={~p"/users/#{@current_scope.user.username}/profile"}
-              class="hidden items-center gap-2 text-sm text-base-content/70 hover:text-base-content sm:flex">
-              <%= if @current_scope.user.profile && @current_scope.user.profile.avatar_url do %>
-                <img src={@current_scope.user.profile.avatar_url} alt="Your avatar"
-                  class="size-8 rounded-full object-cover ring-1 ring-base-300" />
-                <% else %>
-                  <.icon name="hero-user-circle" class="size-8 text-base-content/40" />
+          <nav class="flex items-center gap-2">
+            <%= if @current_scope do %>
+              <.link
+                navigate={~p"/users/my-apartment"}
+                class="btn btn-ghost btn-sm"
+              >
+                My Apartment
+              </.link>
+
+              <.link navigate={~p"/issues"} class="btn btn-ghost btn-sm">
+                My Issues
+              </.link>
+
+              <.link
+                :if={Proplex.Authorization.can?(@current_scope.user, :view_assigned, :issues)}
+                navigate={~p"/issues/assigned"}
+                class="btn btn-ghost btn-sm"
+              >
+                My Assignments
+              </.link>
+
+              <div
+                :if={Proplex.Authorization.has_role?(@current_scope.user, "admin")}
+                class="dropdown dropdown-end"
+              >
+                <div tabindex="0" role="button" class="btn btn-ghost btn-sm">
+                  Admin <.icon name="hero-chevron-down" class="size-4" />
+                </div>
+
+                <ul
+                  tabindex="0"
+                  class="dropdown-content menu bg-base-100 rounded-box z-10 mt-1 w-52 p-2 shadow border border-base-300"
+                >
+                  <li>
+                    <.link navigate={~p"/admin/issues"}>All Issues</.link>
+                  </li>
+                  <li>
+                    <.link navigate={~p"/admin/apartments"}>All Apartments</.link>
+                  </li>
+                  <li>
+                    <.link navigate={~p"/admin/users"}>All Users</.link>
+                  </li>
+                </ul>
+              </div>
+
+              <div class="dropdown dropdown-end hidden sm:block">
+                <div
+                  tabindex="0"
+                  role="button"
+                  class="btn btn-ghost btn-sm flex items-center gap-2 px-2"
+                >
+                  <%= if @current_scope.user.profile && @current_scope.user.profile.avatar_url do %>
+                    <img
+                      src={@current_scope.user.profile.avatar_url}
+                      alt="Your avatar"
+                      class="size-7 rounded-full object-cover ring-1 ring-base-300"
+                    />
+                  <% else %>
+                    <.icon name="hero-user-circle" class="size-7 text-base-content/40" />
                   <% end %>
-                    <span class="hover:underline">{@current_scope.user.username}</span>
-            </.link>
-            <.link navigate={~p"/users/my-apartment"} class="btn btn-ghost btn-sm">
-              My Apartment
-            </.link>
+                  <span class="text-sm">{@current_scope.user.username}</span>
+                  <.icon name="hero-chevron-down" class="size-4" />
+                </div>
+                <ul
+                  tabindex="0"
+                  class="dropdown-content menu bg-base-100 rounded-box z-10 mt-1 w-48 p-2 shadow border border-base-300"
+                >
+                  <li>
+                    <.link navigate={~p"/users/#{@current_scope.user.username}/profile"}>
+                      <.icon name="hero-user" class="size-4" /> Your profile
+                    </.link>
+                  </li>
 
-            <.link navigate={~p"/issues"} class="btn btn-ghost btn-sm">
-              My Issues
-            </.link>
+                  <li>
+                    <.link navigate={~p"/users/settings"}>
+                      <.icon name="hero-cog-6-tooth" class="size-4" /> Settings
+                    </.link>
+                  </li>
 
-            <.link :if={Proplex.Authorization.can?(@current_scope.user, :view_assigned, :issues)}
-              navigate={~p"/issues/assigned"} class="btn btn-ghost btn-sm">
-              My Assignments
-            </.link>
+                  <li>
+                    <.link href={~p"/users/log-out"} method="delete">
+                      <.icon name="hero-arrow-right-on-rectangle" class="size-4" /> Log out
+                    </.link>
+                  </li>
+                </ul>
+              </div>
 
-            <.link :if={Proplex.Authorization.can?(@current_scope.user, :view_all, :issues)}
-              navigate={~p"/admin/issues"} class="btn btn-ghost btn-sm">
-              All Issues
-            </.link>
-
-            <.link :if={Proplex.Authorization.can?(@current_scope.user, :manage, :apartments)}
-              navigate={~p"/admin/apartments"} class="btn btn-ghost btn-sm">
-              All Apartments
-            </.link>
-
-            <.link navigate={~p"/users/settings"} class="btn btn-ghost btn-sm">
-              Settings
-            </.link>
-            <.link href={~p"/users/log-out"} method="delete" class="btn btn-ghost btn-sm">
-              Log out
-            </.link>
+              <.link navigate={~p"/users/settings"} class="btn btn-ghost btn-sm sm:hidden">
+                Settings
+              </.link>
+              <.link
+                href={~p"/users/log-out"}
+                method="delete"
+                class="btn btn-ghost btn-sm sm:hidden"
+              >
+                Log out
+              </.link>
             <% else %>
               <.link navigate={~p"/users/log-in"} class="btn btn-ghost btn-sm">
                 Log in
@@ -89,15 +144,12 @@
               <.link navigate={~p"/users/register"} class="btn btn-primary btn-sm">
                 Register
               </.link>
-              <% end %>
-                <.theme_toggle />
-        </nav>
+            <% end %>
+            <.theme_toggle />
+          </nav>
+        </div>
       </div>
-
-    </div>
-
-  </header>
-  {@inner_content}
-</body>
-
+    </header>
+    {@inner_content}
+  </body>
 </html>

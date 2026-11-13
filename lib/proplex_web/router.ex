@@ -122,6 +122,15 @@ defmodule ProplexWeb.Router do
       live "/admin/apartments/:id/edit", ApartmentLive.AdminForm, :edit
     end
 
+    live_session :require_users_manage,
+      on_mount: [
+        {ProplexWeb.UserAuth, :require_authenticated},
+        {ProplexWeb.UserAuthorization, {:require_permission, :users, :manage}}
+      ] do
+      live "/admin/users", UserLive.AdminIndex, :index
+      live "/admin/users/:id/edit", UserLive.AdminEdit, :edit
+    end
+
     live_session :require_profiles_view,
       on_mount: [
         {ProplexWeb.UserAuth, :require_authenticated},

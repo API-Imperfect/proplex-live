@@ -69,6 +69,53 @@ defmodule Proplex.Authorization do
     end
   end
 
+  def replace_user_role(user, new_role_name) do
+    case get_role_by_name(new_role_name) do
+      nil ->
+        {:error, :role_not_found}
+
+      %Role{} = new_role ->
+        revoke_query =
+          from ur in UserRole,
+            where: ur.user_id == ^user.id and is_nil(ur.property_id)
+
+        new_user_role_changeset =
+          UserRole.changeset(%UserRole{}, %{
+            user_id: user.id,
+            role_id: new_role.id,
+            property_id: nil
+          })
+
+        result =
+          Ecto.Multi.new()
+          |> Ecto.Multi.delete_all(:revoke_old_roles, revoke_query)
+          |> Ecto.Multi.insert(:assign_new_role, new_user_role_changeset)
+          |> Repo.transact()
+
+        case result do
+          {:ok, _changes} ->
+            Logger.info("User role replaced",
+              event: :role_replaced,
+              user_id: user.id,
+              role: to_string(new_role_name)
+            )
+
+            {:ok, new_role}
+
+          {:error, step, value, _changes} ->
+            Logger.warning("Role replacement failed",
+              event: :role_replacement_failed,
+              user_id: user.id,
+              role: to_string(new_role_name),
+              failed_step: step,
+              failed_value: inspect(value)
+            )
+
+            {:error, {step, value}}
+        end
+    end
+  end
+
   def list_user_roles(user) do
     from(ur in UserRole,
       join: r in assoc(ur, :role),

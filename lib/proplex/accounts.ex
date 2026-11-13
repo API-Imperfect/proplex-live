@@ -62,31 +62,42 @@ defmodule Proplex.Accounts do
     |> Repo.update()
   end
 
- @profile_fields_required_for_reporting [:first_name, :last_name, :phone_number]
+  def list_users_for_admin do
+    from(u in User,
+      left_join: ur in Proplex.Authorization.UserRole,
+      on: ur.user_id == u.id and is_nil(ur.property_id),
+      left_join: r in Proplex.Authorization.Role,
+      on: r.id == ur.role_id,
+      order_by: [desc: u.inserted_at],
+      select: %{user: u, role_name: r.name}
+    )
+    |> Repo.all()
+  end
 
- def profile_complete_for_reporting?(user) do
-   missing_profile_fields_for_reporting(user) == []
- end
+  @profile_fields_required_for_reporting [:first_name, :last_name, :phone_number]
 
- def missing_profile_fields_for_reporting(user) do
-   user = Repo.preload(user, :profile)
+  def profile_complete_for_reporting?(user) do
+    missing_profile_fields_for_reporting(user) == []
+  end
 
-   case user.profile do
-     nil ->
-      @profile_fields_required_for_reporting
+  def missing_profile_fields_for_reporting(user) do
+    user = Repo.preload(user, :profile)
 
-    %Profile{}=profile ->
-      Enum.filter(@profile_fields_required_for_reporting, fn field ->
-        blank?(Map.get(profile, field))
-      end)
-   end
- end
+    case user.profile do
+      nil ->
+        @profile_fields_required_for_reporting
 
- defp blank?(nil), do: true
- defp blank?(""), do: true
- defp blank?(value) when is_binary(value), do: String.trim(value) == ""
- defp blank?(_), do: false
+      %Profile{} = profile ->
+        Enum.filter(@profile_fields_required_for_reporting, fn field ->
+          blank?(Map.get(profile, field))
+        end)
+    end
+  end
 
+  defp blank?(nil), do: true
+  defp blank?(""), do: true
+  defp blank?(value) when is_binary(value), do: String.trim(value) == ""
+  defp blank?(_), do: false
 
   @doc """
   Gets a user by email and password.
@@ -150,25 +161,24 @@ defmodule Proplex.Accounts do
     |> case do
       {:ok, %{user: user}} ->
         Logger.info("User registered",
-        event: :user_registered,
-        user_id: user.id,
-        email: user.email)
+          event: :user_registered,
+          user_id: user.id,
+          email: user.email
+        )
 
         {:ok, user}
 
-        {:error, :user, changeset, _changes} ->
-          {:error, changeset}
+      {:error, :user, changeset, _changes} ->
+        {:error, changeset}
 
-        {:error, failed_step, failed_value, _changes} ->
-          Logger.warning("Registration transaction failed at unexpected step",
+      {:error, failed_step, failed_value, _changes} ->
+        Logger.warning("Registration transaction failed at unexpected step",
           event: :registration_failed,
           failed_step: failed_step,
           failed_value: inspect(failed_value)
+        )
 
-
-          )
-
-          {:error, :registration_failed}
+        {:error, :registration_failed}
     end
   end
 
@@ -186,8 +196,6 @@ defmodule Proplex.Accounts do
       Proplex.Authorization.assign_role(user, "tenant")
     end)
   end
-
-
 
   ## Settings
 
