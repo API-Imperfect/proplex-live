@@ -62,16 +62,21 @@ defmodule Proplex.Accounts do
     |> Repo.update()
   end
 
-  def list_users_for_admin do
-    from(u in User,
+  def list_users_for_admin(opts \\ []) do
+    query =
+    from u in User,
       left_join: ur in Proplex.Authorization.UserRole,
       on: ur.user_id == u.id and is_nil(ur.property_id),
       left_join: r in Proplex.Authorization.Role,
       on: r.id == ur.role_id,
-      order_by: [desc: u.inserted_at],
       select: %{user: u, role_name: r.name}
-    )
-    |> Repo.all()
+
+      opts =
+        Keyword.put_new(opts, :cursor_extractor, fn row ->
+          [row.user.inserted_at, row.user.id]
+        end)
+
+    Proplex.Pagination.paginate(query, opts)
   end
 
   @profile_fields_required_for_reporting [:first_name, :last_name, :phone_number]

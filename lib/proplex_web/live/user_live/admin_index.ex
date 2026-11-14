@@ -80,6 +80,17 @@ defmodule ProplexWeb.UserLive.AdminIndex do
                 </tbody>
               </table>
             </div>
+
+            <div :if={@next_cursor} class="mt-4 flex justify-center">
+              <.button
+                id="load-more-users"
+                phx-click="load_more"
+                phx-disable-with="Loading..."
+                class="btn btn-outline btn-sm"
+              >
+                <.icon name="hero-arrow-down" class="size-4" /> Load more
+              </.button>
+            </div>
         <% end %>
       </div>
     </Layouts.app>
@@ -88,8 +99,25 @@ defmodule ProplexWeb.UserLive.AdminIndex do
 
   @impl true
   def mount(_params, _session, socket) do
-    rows = Accounts.list_users_for_admin()
-    {:ok, assign(socket, :rows, rows)}
+    page = Accounts.list_users_for_admin()
+
+    {:ok,
+     socket
+     |> assign(:rows, page.rows)
+     |> assign(:next_cursor, page.next_cursor)}
+  end
+
+  @impl true
+  def handle_event("load_more", _params, %{assigns: %{next_cursor: nil}} = socket),
+    do: {:noreply, socket}
+
+  def handle_event("load_more", _params, socket) do
+    page = Accounts.list_users_for_admin(cursor: socket.assigns.next_cursor)
+
+    {:noreply,
+     socket
+     |> assign(:rows, socket.assigns.rows ++ page.rows)
+     |> assign(:next_cursor, page.next_cursor)}
   end
 
   defp role_badge_class("admin"), do: "badge-primary"
