@@ -22,6 +22,23 @@ defmodule ProplexWeb.ApartmentLive.AdminIndex do
 
         <form phx-change="filter" class="mb-4 flex flex-wrap items-end gap-4">
           <div>
+            <label
+              for="filter-sort"
+              class="mb-1 block text-xs font-semibold uppercase tracking-wide text-base-content/60"
+            >
+              Sort
+            </label>
+            <select id="filter-sort" name="sort" class="select select-sm">
+              <option
+                :for={{label, value} <- @sort_options}
+                value={value}
+                selected={@filters.sort == value}
+              >
+                {label}
+              </option>
+            </select>
+          </div>
+          <div>
             <div class="mb-1 text-xs font-semibold uppercase tracking-wide text-base-content/60">
               Occupancy
             </div>
@@ -156,6 +173,16 @@ defmodule ProplexWeb.ApartmentLive.AdminIndex do
                 </tbody>
               </table>
             </div>
+            <div :if={@next_cursor} class="mt-4 flex justify-center">
+              <.button
+                id="load-more-apartments"
+                phx-click="load_more"
+                phx-disable-with="Loading..."
+                class="btn btn-outline btn-sm"
+              >
+                <.icon name="hero-arrow-down" class="size-4" /> Load more
+              </.button>
+            </div>
         <% end %>
       </div>
     </Layouts.app>
@@ -164,17 +191,11 @@ defmodule ProplexWeb.ApartmentLive.AdminIndex do
 
   @impl true
   def mount(_params, _session, socket) do
-    filters = default_filters()
-
-    building_names = Apartments.list_building_names()
-
-    apartments = Apartments.list_apartments_with_current_tenant(filters_to_opts(filters))
-
     {:ok,
      socket
-     |> assign(:filters, filters)
-     |> assign(:building_names, building_names)
-     |> assign(:apartments, apartments)}
+     |> assign(:building_names, Apartments.list_building_names())
+     |> assign(:sort_options, Apartments.apartment_sort_options())
+     |> load_first_page(default_filters())}
   end
 
   @impl true
@@ -182,37 +203,59 @@ defmodule ProplexWeb.ApartmentLive.AdminIndex do
     filters = %{
       occupancy: params["occupancy"] || "all",
       building_name: params["building_name"] || "",
-      include_archived: params["include_archived"] == "true"
+      include_archived: params["include_archived"] == "true",
+      sort: params["sort"] || Apartments.default_apartment_sort()
     }
 
-    apartments =
-      Apartments.list_apartments_with_current_tenant(filters_to_opts(filters))
-
-    {:noreply, socket |> assign(:filters, filters) |> assign(:apartments, apartments)}
+    {:noreply, load_first_page(socket, filters)}
   end
 
   def handle_event("reset_filters", _params, socket) do
-    filters = default_filters()
+    {:noreply, load_first_page(socket, default_filters())}
+  end
 
-    apartments =
-      Apartments.list_apartments_with_current_tenant(filters_to_opts(filters))
+  def handle_event("load_more", _params, %{assigns: %{next_cursor: nil}} = socket) do
+    {:noreply, socket}
+  end
 
-    {:noreply, socket |> assign(:filters, filters) |> assign(:apartments, apartments)}
+  def handle_event("load_more", _params, socket) do
+    opts = filters_to_opts(socket.assigns.filters) ++ [cursor: socket.assigns.next_cursor]
+    page = Apartments.list_apartments_with_current_tenant(opts)
+
+    {:noreply,
+     socket
+     |> assign(:apartments, socket.assigns.apartments ++ page.rows)
+     |> assign(:next_cursor, page.next_cursor)}
+  end
+
+  defp load_first_page(socket, filters) do
+    page = Apartments.list_apartments_with_current_tenant(filters_to_opts(filters))
+
+    socket
+    |> assign(:filters, filters)
+    |> assign(:apartments, page.rows)
+    |> assign(:next_cursor, page.next_cursor)
   end
 
   defp default_filters do
-    %{occupancy: "all", building_name: "", include_archived: true}
+    %{
+      occupancy: "all",
+      building_name: "",
+      include_archived: true,
+      sort: Apartments.default_apartment_sort()
+    }
   end
 
-  defp filters_active?(%{occupancy: occ, building_name: bn, include_archived: ia}) do
-    occ != "all" or bn != "" or ia != true
+  defp filters_active?(%{occupancy: occ, building_name: bn, include_archived: ia, sort: sort}) do
+    occ != "all" or bn != "" or ia != true or sort != Apartments.default_apartment_sort()
   end
 
-  defp filters_to_opts(%{occupancy: occ, building_name: bn, include_archived: ia}) do
+  defp filters_to_opts(%{occupancy: occ, building_name: bn, include_archived: ia, sort: sort}) do
     [
       include_archived: ia,
       building_name: if(bn == "", do: nil, else: bn),
-      occupancy: occupancy_atom(occ)
+      occupancy: occupancy_atom(occ),
+      sort: sort
     ]
   end
 

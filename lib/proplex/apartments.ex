@@ -4,6 +4,21 @@ defmodule Proplex.Apartments do
   alias Proplex.Repo
 
   alias Proplex.Apartments.{Apartment, PendingTenancy, Tenancy}
+  alias Proplex.Pagination
+
+  @apartment_sorts %{
+    "building" => [asc: :building_name, asc: :unit_number, asc: :id],
+    "newest" => [desc: :inserted_at, desc: :id],
+    "oldest" => [asc: :inserted_at, asc: :id]
+  }
+
+  @default_apartment_sort "building"
+
+  def apartment_sort_options do
+    [{"Building & unit", "building"}, {"Newest first", "newest"}, {"Oldest first", "oldest"}]
+  end
+
+  def default_apartment_sort, do: @default_apartment_sort
 
   def list_apartments(opts \\ []) do
     include_archived? = Keyword.get(opts, :include_archived, false)
@@ -86,7 +101,7 @@ defmodule Proplex.Apartments do
           |> Ecto.Changeset.change(archived_at: DateTime.utc_now() |> DateTime.truncate(:second))
           |> Repo.update()
 
-      case result do
+        case result do
           {:ok, archived} ->
             Logger.warning("Apartment archived",
               event: :apartment_archived,
@@ -100,7 +115,6 @@ defmodule Proplex.Apartments do
           other ->
             other
         end
-
     end
   end
 
@@ -232,12 +246,18 @@ defmodule Proplex.Apartments do
   end
 
   def list_apartments_with_current_tenant(opts \\ []) do
+    order =
+      Map.get(
+        @apartment_sorts,
+        Keyword.get(opts, :sort),
+        @apartment_sorts[@default_apartment_sort]
+      )
+
     query =
       from(a in Apartment,
         left_join: t in assoc(a, :tenancies),
         on: t.apartment_id == a.id and is_nil(t.end_date),
         left_join: u in assoc(t, :user),
-        order_by: [asc: a.building_name, asc: a.unit_number],
         select: %{apartment: a, current_tenant: u}
       )
 
@@ -245,7 +265,14 @@ defmodule Proplex.Apartments do
     |> maybe_filter_archived(Keyword.get(opts, :include_archived, true))
     |> maybe_filter_building(Keyword.get(opts, :building_name))
     |> maybe_filter_occupancy(Keyword.get(opts, :occupancy, :all))
-    |> Repo.all()
+    |> Pagination.paginate(
+      limit: Keyword.get(opts, :limit),
+      cursor: Keyword.get(opts, :cursor),
+      cursor_fields: order,
+      cursor_extractor: fn row ->
+        Enum.map(order, fn {_dir, field} -> Map.fetch!(row.apartment, field) end)
+      end
+    )
   end
 
   def list_eligible_tenants do
@@ -277,10 +304,10 @@ defmodule Proplex.Apartments do
 
   @pending_tenancy_token_validity_days 7
 
-  def invite_tenant(%Apartment{}=apartment, attrs) do
+  def invite_tenant(%Apartment{} = apartment, attrs) do
     email =
-      attrs[:invite_email] || attrs["invite_email"] || attrs[:email]
-      || attrs["email"]
+      attrs[:invite_email] || attrs["invite_email"] || attrs[:email] ||
+        attrs["email"]
 
     start_date =
       attrs[:start_date] || attrs["start_date"] || Date.utc_today()
@@ -304,42 +331,43 @@ defmodule Proplex.Apartments do
     case Proplex.Accounts.get_user_by_email(email) do
       nil ->
         case create_pending_tenancy(%{
-          apartment_id: apartment.id,
-          invite_email: email,
-          start_date: start_date
-        })do
+               apartment_id: apartment.id,
+               invite_email: email,
+               start_date: start_date
+             }) do
           {:ok, pending, raw_token} ->
             {:ok, :invite_sent, pending, raw_token}
+
           other ->
             other
         end
 
-        %_{} = user ->
-          case get_active_tenancy_for_user(user) do
-            nil ->
-              case start_tenancy(%{
-                user_id: user.id,
-                apartment_id: apartment.id,
-                start_date: start_date
-              })do
-                {:ok, tenancy}->
-                  Logger.info("Invite auto-linked existing user",
+      %_{} = user ->
+        case get_active_tenancy_for_user(user) do
+          nil ->
+            case start_tenancy(%{
+                   user_id: user.id,
+                   apartment_id: apartment.id,
+                   start_date: start_date
+                 }) do
+              {:ok, tenancy} ->
+                Logger.info("Invite auto-linked existing user",
                   event: :invite_auto_linked,
                   user_id: user.id,
                   apartment_id: apartment.id,
                   invite_email: email,
                   tenancy_id: tenancy.id
+                )
 
-                  )
+                {:ok, :tenancy_started, tenancy}
 
-                  {:ok, :tenancy_started, tenancy}
-                other ->
-                  other
-              end
+              other ->
+                other
+            end
 
-              _active ->
-                {:error, :user_has_active_tenancy}
-          end
+          _active ->
+            {:error, :user_has_active_tenancy}
+        end
     end
   end
 
@@ -360,14 +388,15 @@ defmodule Proplex.Apartments do
     case result do
       {:ok, pending} ->
         Logger.info("Pending tenancy created",
-        event: :pending_tenancy_created,
-        pending_tenancy_id: pending.id,
-        apartment_id: pending.apartment_id,
-        invite_email: pending.invite_email,
-        start_date: Date.to_iso8601(pending.start_date))
+          event: :pending_tenancy_created,
+          pending_tenancy_id: pending.id,
+          apartment_id: pending.apartment_id,
+          invite_email: pending.invite_email,
+          start_date: Date.to_iso8601(pending.start_date)
+        )
 
-      enqueue_invite_email(pending.id, raw_token)
-      {:ok, pending, raw_token}
+        enqueue_invite_email(pending.id, raw_token)
+        {:ok, pending, raw_token}
 
       other ->
         other
@@ -380,8 +409,8 @@ defmodule Proplex.Apartments do
 
     Repo.one(
       from p in PendingTenancy,
-      where: p.token_hash == ^token_hash and p.expires_at > ^now,
-      preload: [:apartment]
+        where: p.token_hash == ^token_hash and p.expires_at > ^now,
+        preload: [:apartment]
     )
   end
 
@@ -392,8 +421,8 @@ defmodule Proplex.Apartments do
   def list_pending_tenancies_for_apartment(%Apartment{id: apartment_id}) do
     Repo.all(
       from p in PendingTenancy,
-       where: p.apartment_id == ^apartment_id,
-       order_by: [desc: p.inserted_at]
+        where: p.apartment_id == ^apartment_id,
+        order_by: [desc: p.inserted_at]
     )
   end
 
@@ -401,15 +430,16 @@ defmodule Proplex.Apartments do
     case Repo.delete(pending) do
       {:ok, deleted} ->
         Logger.warning("Pending tenancy cancelled",
-        event: :pending_tenancy_cancelled,
-        pending_tenancy_id: deleted.id,
-        apartment_id: deleted.apartment_id,
-        invite_email: deleted.invite_email)
+          event: :pending_tenancy_cancelled,
+          pending_tenancy_id: deleted.id,
+          apartment_id: deleted.apartment_id,
+          invite_email: deleted.invite_email
+        )
 
         {:ok, deleted}
 
-     other ->
-      other
+      other ->
+        other
     end
   end
 
@@ -418,26 +448,27 @@ defmodule Proplex.Apartments do
 
     result =
       pending
-      |> PendingTenancy.regenerate_token_changeset(
-        %{token_hash: token_hash,
-      expires_at: expires_at}
-      )
+      |> PendingTenancy.regenerate_token_changeset(%{
+        token_hash: token_hash,
+        expires_at: expires_at
+      })
       |> Repo.update()
 
     case result do
       {:ok, updated} ->
         Logger.info("Pending tenancy token regenerated",
-        event: :pending_tenancy_resent,
-        pending_tenancy_id: updated.id,
-        apartment_id: updated.apartment_id,
-        invite_email: updated.invite_email)
+          event: :pending_tenancy_resent,
+          pending_tenancy_id: updated.id,
+          apartment_id: updated.apartment_id,
+          invite_email: updated.invite_email
+        )
 
         enqueue_invite_email(updated.id, raw_token)
 
         {:ok, updated, raw_token}
 
-    other ->
-      other
+      other ->
+        other
     end
   end
 
@@ -458,28 +489,28 @@ defmodule Proplex.Apartments do
     case result do
       {:ok, %{tenancy: tenancy}} ->
         Logger.info("Pending tenancy consumed",
-        event: :pending_tenancy_consumed,
-        pending_tenancy_id: pending.id,
-        tenancy_id: tenancy.id,
-        user_id: user.id,
-        apartment_id: tenancy.apartment_id,
-        start_date: Date.to_iso8601(tenancy.start_date))
+          event: :pending_tenancy_consumed,
+          pending_tenancy_id: pending.id,
+          tenancy_id: tenancy.id,
+          user_id: user.id,
+          apartment_id: tenancy.apartment_id,
+          start_date: Date.to_iso8601(tenancy.start_date)
+        )
 
-      {:ok, tenancy}
+        {:ok, tenancy}
 
       {:error, :tenancy, changeset, _changes} ->
         {:error, changeset}
 
-{:error, step, value, _changes} ->
+      {:error, step, value, _changes} ->
+        Logger.warning("Pending tenancy consume failed",
+          event: :pending_tenancy_consume_failed,
+          pending_tenancy_id: pending.id,
+          failed_step: step,
+          failed_value: inspect(value)
+        )
 
-   Logger.warning("Pending tenancy consume failed",
-        event: :pending_tenancy_consume_failed,
-        pending_tenancy_id: pending.id,
-        failed_step: step,
-        failed_value: inspect(value))
-
-    {:error, {step, value}}
-
+        {:error, {step, value}}
     end
   end
 
@@ -491,7 +522,7 @@ defmodule Proplex.Apartments do
       DateTime.utc_now(:second)
       |> DateTime.add(@pending_tenancy_token_validity_days, :day)
 
-      {raw_token, token_hash, expires_at}
+    {raw_token, token_hash, expires_at}
   end
 
   defp normalize_attrs(attrs) when is_map(attrs) do
@@ -500,8 +531,6 @@ defmodule Proplex.Apartments do
       {k, v} -> {k, v}
     end)
   end
-
-
 
   defp maybe_filter_archived(query, true), do: query
 
@@ -531,7 +560,6 @@ defmodule Proplex.Apartments do
     %{pending_tenancy_id: pending_tenancy_id, raw_token: raw_token}
     |> Proplex.Workers.PendingTenancyInviteEmail.new()
     |> Oban.insert()
-
   end
 
   def accept_invite(%PendingTenancy{} = pending, user_attrs) do
@@ -559,26 +587,28 @@ defmodule Proplex.Apartments do
     case result do
       {:ok, %{confirmed_user: user, tenancy: tenancy}} ->
         Logger.info("Invite accepted",
-        event: :invite_accepted,
-        pending_tenancy_id: pending.id,
-        user_id: user.id,
-        tenancy_id: tenancy.id,
-        apartment_id: pending.apartment_id,
-        invite_email: user.email)
+          event: :invite_accepted,
+          pending_tenancy_id: pending.id,
+          user_id: user.id,
+          tenancy_id: tenancy.id,
+          apartment_id: pending.apartment_id,
+          invite_email: user.email
+        )
 
         {:ok, user, tenancy}
 
-        {:error, :user, changeset, _changes} ->
-          {:error, changeset}
+      {:error, :user, changeset, _changes} ->
+        {:error, changeset}
 
-        {:error, step, value, _changes} ->
-          Logger.warning("Invite acceptance failed at unexpected step",
+      {:error, step, value, _changes} ->
+        Logger.warning("Invite acceptance failed at unexpected step",
           event: :invite_acceptance_failed,
           pending_tenancy_id: pending.id,
           failed_step: step,
-          failed_value: inspect(value))
+          failed_value: inspect(value)
+        )
 
-          {:error, {step, value}}
+        {:error, {step, value}}
     end
   end
 end
