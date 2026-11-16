@@ -41,4 +41,22 @@ defmodule Proplex.RateLimit do
         {:deny, retry_after_ms}
     end
   end
+
+  def record_report_attempt(user_id) when is_integer(user_id) do
+    window = :timer.hours(24 * 7)
+
+    case hit("report:reporter:#{user_id}", window, 5) do
+      {:allow, _count} ->
+        :ok
+
+      {:deny, retry_after_ms} ->
+        Logger.warning("Report filing rate limit exceeded",
+        event: :rate_limit_denied,
+        limiter: :report_filing,
+        user_id: user_id,
+        retry_after_ms: retry_after_ms)
+
+        {:deny, retry_after_ms}
+    end
+  end
 end

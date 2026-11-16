@@ -10,6 +10,12 @@ defmodule Proplex.Accounts.User do
     field :confirmed_at, :utc_datetime
     field :authenticated_at, :utc_datetime, virtual: true
 
+    field :flagged_at, :utc_datetime
+    field :suspended_at, :utc_datetime
+
+    has_many :reports_filed, Proplex.Reports.Report, foreign_key: :reporter_id
+    has_many :reports_received, Proplex.Reports.Report, foreign_key: :reported_id
+
     has_many :user_roles, Proplex.Authorization.UserRole
 
     has_many :roles, through: [:user_roles, :role]
@@ -167,6 +173,18 @@ defmodule Proplex.Accounts.User do
   def confirm_changeset(user) do
     now = DateTime.utc_now(:second)
     change(user, confirmed_at: now)
+  end
+
+  def flag_changeset(user) do
+    change(user, flagged_at: DateTime.utc_now(:second))
+  end
+
+  def suspend_changeset(user) do
+    change(user, suspended_at: DateTime.utc_now(:second))
+  end
+
+  def reactivate_changeset(user) do
+    change(user, suspended_at: nil, flagged_at: nil)
   end
 
   @doc """
