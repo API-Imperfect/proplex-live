@@ -4,6 +4,7 @@ defmodule ProplexWeb.UserSessionController do
   require Logger
 
   alias Proplex.Accounts
+  alias Proplex.Accounts.User
   alias ProplexWeb.UserAuth
 
   def create(conn, %{"_action" => "confirmed"} = params) do
@@ -18,11 +19,26 @@ defmodule ProplexWeb.UserSessionController do
   defp create(conn, %{"user" => %{"token" => token} = user_params}, info) do
     case Accounts.login_user_by_magic_link(token) do
       {:ok, {user, tokens_to_disconnect}} ->
-        UserAuth.disconnect_sessions(tokens_to_disconnect)
+        if User.suspended?(user) do
+          Logger.warning("Login denied: user suspended",
+          event: :login_denied_suspended,
+          flow: :magic_link,
+          user_id: user.id,
+          email: user.email,
+          ip: client_ip(conn)
 
-        conn
-        |> put_flash(:info, info)
-        |> UserAuth.log_in_user(user, user_params)
+          )
+
+          conn
+          |> put_flash(:error, UserAuth.suspended_flash())
+          |> redirect(to: ~p"/users/log-in")
+        else
+          UserAuth.disconnect_sessions(tokens_to_disconnect)
+          conn
+          |> put_flash(:info, info)
+          |> UserAuth.log_in_user(user, user_params)
+        end
+
 
       {:error, :password_user_confirmed} ->
         conn
@@ -41,16 +57,32 @@ defmodule ProplexWeb.UserSessionController do
     %{"email" => email, "password" => password} = user_params
 
     if user = Accounts.get_user_by_email_and_password(email, password) do
-      Logger.info("User login succeeded",
-        event: :login_success,
-        user_id: user.id,
-        ip: client_ip(conn)
-      )
 
-      conn
-      |> put_flash(:info, info)
-      |> UserAuth.log_in_user(user, user_params)
-    else
+      if User.suspended?(user) do
+          Logger.warning("Login denied: user suspended",
+          event: :login_denied_suspended,
+          flow: :password_user,
+          user_id: user.id,
+          email: user.email,
+          ip: client_ip(conn)
+
+          )
+
+          conn
+          |> put_flash(:error, UserAuth.suspended_flash())
+          |> put_flash(:email, String.slice(email, 0, 160))
+          |> redirect(to: ~p"/users/log-in")
+        else
+          Logger.info("User login succeeded",
+          event: :login_success,
+          user_id: user.id,
+          ip: client_ip(conn))
+          conn
+          |> put_flash(:info, info)
+          |> UserAuth.log_in_user(user, user_params)
+        end
+
+      else
       Logger.warning("User login failed",
         event: :login_failure,
         email: email,

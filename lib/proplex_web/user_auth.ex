@@ -26,6 +26,10 @@ defmodule ProplexWeb.UserAuth do
   # the reissuing of tokens completely.
   @session_reissue_age_in_days 7
 
+  @suspended_flash "Your account has been suspended from app access. Your lease and rent obligations remain in effect — please contact your property manager to discuss next steps."
+
+  def suspended_flash, do: @suspended_flash
+
   @doc """
   Logs the user in.
 

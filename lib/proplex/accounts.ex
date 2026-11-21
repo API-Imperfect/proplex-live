@@ -463,6 +463,16 @@ defmodule Proplex.Accounts do
     :ok
   end
 
+  def delete_user_tokens(%User{id: user_id}) do
+    tokens = Repo.all(from(t in UserToken, where: t.user_id == ^user_id))
+
+    if tokens != [] do
+      Repo.delete_all(from(t in UserToken, where: t.user_id == ^user_id))
+    end
+
+    tokens
+  end
+
   ## Token helper
 
   defp update_user_and_delete_all_tokens(changeset) do

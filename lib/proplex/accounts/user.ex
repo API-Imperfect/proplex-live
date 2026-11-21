@@ -1,4 +1,5 @@
 defmodule Proplex.Accounts.User do
+  alias Proplex.Accounts.UserToken
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -187,6 +188,10 @@ defmodule Proplex.Accounts.User do
     change(user, suspended_at: nil, flagged_at: nil)
   end
 
+  def suspended?(%__MODULE__{suspended_at: suspended_at}) do
+    not is_nil(suspended_at)
+  end
+
   @doc """
   Verifies the password.
 
@@ -202,4 +207,5 @@ defmodule Proplex.Accounts.User do
     Bcrypt.no_user_verify()
     false
   end
+
 end
