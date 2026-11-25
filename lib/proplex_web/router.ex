@@ -96,6 +96,23 @@ defmodule ProplexWeb.Router do
       live "/issues", IssueLive.Index, :index
     end
 
+    live_session :require_reports_create,
+      on_mount: [
+        {ProplexWeb.UserAuth, :require_authenticated},
+        {ProplexWeb.UserAuthorization, {:require_permission, :reports, :create}}
+      ] do
+      live "/reports/new", ReportLive.New, :new
+    end
+
+     live_session :require_reports_view_own,
+      on_mount: [
+        {ProplexWeb.UserAuth, :require_authenticated},
+        {ProplexWeb.UserAuthorization, {:require_permission, :reports, :view_own}}
+      ] do
+      live "/reports", ReportLive.Index, :index
+    end
+
+
     live_session :require_issues_detail,
       on_mount: [
         {ProplexWeb.UserAuth, :require_authenticated}
